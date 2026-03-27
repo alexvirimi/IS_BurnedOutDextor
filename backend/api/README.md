@@ -30,10 +30,11 @@
 
    - Windows
 
-   ```bash
+   ```
    winget install Python.Python.3.12
-   python3.12 -m pip install --user poetry
-   poetry ensurepath
+   pip install --user pipx
+   pipx ensurepath
+   pipx install poetry
    ```
 
    To ensure poetry is up and running
