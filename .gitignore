@@ -10,3 +10,13 @@ venv/
 # Docker
 *.log
 docker-compose.override.yml
+
+# Poetry
+.poetry/
+venv/
+
+# VSCode
+.vscode/
+
+# macOS
+.DS_Store
