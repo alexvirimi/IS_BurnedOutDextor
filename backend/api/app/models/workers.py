@@ -30,11 +30,11 @@ class Worker(Base):
     name: Mapped[str] = mapped_column(String(100))
     last_names: Mapped[str] = mapped_column(String(150))
 
-    group_id: Mapped[uuid.UUID] = mapped_column(
+    id_group: Mapped[uuid.UUID] = mapped_column(
         String(36), 
         ForeignKey('group.id')
     )
-    rank_id: Mapped[int] = mapped_column(
+    id_rank: Mapped[int] = mapped_column(
         Integer,
         ForeignKey('rank.id')
     )
