@@ -27,6 +27,6 @@ class Rank(Base):
         default=uuid.uuid4,
         init=False
     )
-    rank_name: Mapped[str] = mapped_column ()
+    rank_name: Mapped[str] = mapped_column (String(100))
 
     workers: Mapped[list[Worker]]=relationship(back_populates='rank')
