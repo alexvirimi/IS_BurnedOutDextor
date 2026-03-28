@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from __future__ import annotations
 
 import uuid
@@ -44,3 +45,46 @@ class QuestionSurveys(Base):
     question: Mapped[Question] = relationship(back_populates='question_surveys')
     survey: Mapped[Surveys] = relationship(back_populates='question_surveys')
     answers: Mapped[list[Answer]] = relationship(back_populates='question_survey')
+=======
+import uuid
+from typing import TYPE_CHECKING, Optional
+from sqlalchemy import (
+    String, 
+    ForeignKey,
+    Date,
+    Integer
+)
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship
+)
+
+from .base import Base
+
+if TYPE_CHECKING:
+    from .surveys import Surveys
+    from .questions import Question
+
+class QuestionSurveys(Base):
+    
+    __tablename__ = 'question_survey'
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        String(36),
+        default=uuid.uuid4,
+        init=False
+    )
+
+    id_survey: Mapped[uuid.UUID] = mapped_column(
+        String(36),
+        ForeignKey('surveys.id')
+    )
+    id_question: Mapped[uuid.UUID] = mapped_column(
+        String(36),
+        ForeignKey('question.id')
+    )      
+    
+    question: Mapped[Question] = relationship(back_populates='question_surveys')
+    survey: Mapped[Surveys] = relationship(back_populates='question_surveys')
+>>>>>>> a691221 (actualization of main branch)

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Python
 __pycache__/
 *.pyc
@@ -24,3 +25,28 @@ venv/
 # Markdown (documentación de prueba - archivos creados por el asistente)
 # Todos los MDs de documentación están en /temp-docs/ que está ignorado
 temp-docs/
+=======
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+*.env
+
+# Docker
+*.log
+docker-compose.override.yml
+
+# Poetry
+.poetry/
+venv/
+
+# VSCode
+.vscode/
+
+# macOS
+.DS_Store
+backend/api/RELACIONES.md
+>>>>>>> a691221 (actualization of main branch)
