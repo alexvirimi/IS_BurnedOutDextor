@@ -30,12 +30,11 @@ class QuestionSurveys(Base):
 
     id_survey: Mapped[uuid.UUID] = mapped_column(
         String(36),
-        ForeignKey('survey.id')
-    )    
-    
+        ForeignKey('surveys.id')
+    )
     id_question: Mapped[uuid.UUID] = mapped_column(
         String(36),
-        ForeignKey('questions.id')
+        ForeignKey('question.id')
     )      
     
     question: Mapped[Question] = relationship(back_populates='question_surveys')

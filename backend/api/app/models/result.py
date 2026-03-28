@@ -52,9 +52,8 @@ class Result(Base):
     )
     
     generation_date: Mapped[Date] = mapped_column(Date)
-    
-    mappings: Mapped[IdentityMapping] = relationship(back_populates='results')
-    #answer: Mapped[Answer] = relationship (back_populates='results')
-    survey: Mapped[Surveys] = relationship (back_populates='results')
-    area: Mapped[Area] = relationship (back_populates='results')
-    group: Mapped[Group] = relationship (back_populates='results')
+
+    identity_mapping: Mapped[IdentityMapping] = relationship(back_populates='results')
+    survey: Mapped[Surveys] = relationship(back_populates='results')
+    area: Mapped[Area] = relationship(back_populates='results')
+    group: Mapped[Group] = relationship(back_populates='results')
