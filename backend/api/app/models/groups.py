@@ -43,5 +43,5 @@ class Group(Base):
     workers: Mapped[Optional[list[Worker]]] = relationship(back_populates='group')
     worker_leader: Mapped[Worker] = relationship(back_populates='group_leader')
     area: Mapped[Area] = relationship(back_populates='groups')
-    answers: Mapped[Answer] = relationship(back_populates='group')
-    results: Mapped[Result] = relationship(back_populates='group')
+    answers:Mapped[list[Answer]] = relationship(back_populates='group')
+    results: Mapped[list[Result]] = relationship(back_populates='group')
