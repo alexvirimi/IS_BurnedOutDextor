@@ -42,4 +42,4 @@ class Worker(Base):
     group: Mapped[Group] = relationship(back_populates='workers')
     group_leader: Mapped[Group] = relationship(back_populates='worker_leader')
     rank: Mapped[Rank] = relationship(back_populates='workers')
-    id_mapping: Mapped[IdentityMapping] = relationship(back_populates='workers')
+    mapping: Mapped[IdentityMapping] = relationship(back_populates='workers')
