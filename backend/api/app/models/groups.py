@@ -18,8 +18,6 @@ if TYPE_CHECKING:
     from .answer import Answer
     from .result import Result
 
-from .base import Base
-
 
 class Group(Base):
     __tablename__ = 'group'

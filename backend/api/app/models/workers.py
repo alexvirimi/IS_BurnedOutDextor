@@ -1,8 +1,8 @@
 import uuid
 from typing import TYPE_CHECKING
 from sqlalchemy import (
-    String, 
-    Integer, 
+    String,
+    Integer,
     ForeignKey
 )
 from sqlalchemy.orm import (
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from .groups import Group
     from .ranks import Rank
     from .identity_mapping import IdentityMapping
+    from .company import Company
 
 
 class Worker(Base):
@@ -29,6 +30,8 @@ class Worker(Base):
     )
     name: Mapped[str] = mapped_column(String(100))
     last_names: Mapped[str] = mapped_column(String(150))
+    age: Mapped[int] = mapped_column(Integer)
+    gender: Mapped[str] = mapped_column(String(20))  # Demographics for survey analysis
 
     id_group: Mapped[uuid.UUID] = mapped_column(
         String(36), 
@@ -43,3 +46,4 @@ class Worker(Base):
     group_leader: Mapped[Group] = relationship(back_populates='worker_leader')
     rank: Mapped[Rank] = relationship(back_populates='workers')
     mapping: Mapped[IdentityMapping] = relationship(back_populates='workers')
+    company: Mapped[Company] = relationship(back_populates='worker')

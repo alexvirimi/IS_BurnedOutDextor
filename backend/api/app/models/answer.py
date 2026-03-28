@@ -28,27 +28,26 @@ class Answer(Base):
         default=uuid.uuid4,
         init=False
     )
-    hash_name: Mapped[Optional[str]] = mapped_column(
+    hash_user: Mapped[str] = mapped_column(
         String,
-        ForeignKey('rank.id')
+        ForeignKey('identity_mapping.hash_user')  # Anonymized reference to worker
     )
     id_group: Mapped[uuid.UUID] = mapped_column(
-        String (36),
+        String(36),
         ForeignKey('group.id')
     )
     id_area: Mapped[uuid.UUID] = mapped_column(
-        String (36),
+        String(36),
         ForeignKey('area.id')
     )
-    id_questionsurveys: Mapped[uuid.UUID] = mapped_column(
-        String (36),
-        ForeignKey('question_surveys.id')
+    id_question_survey: Mapped[uuid.UUID] = mapped_column(
+        String(36),
+        ForeignKey('question_survey.id')
     )
-    answer_value: Mapped[int] = mapped_column(Integer)
-    answer_date:  Mapped[Date] = mapped_column(Date)
+    value: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[Date] = mapped_column(Date)
     
     group: Mapped[Group] = relationship(back_populates='answers')
-    mappings: Mapped[IdentityMapping] = relationship(back_populates='answers')
-    questionsurveys: Mapped[QuestionSurveys] = relationship (back_populates='answers') 
-    area: Mapped[Area] = relationship (back_populates='answers')
-    #results = Mapped[list[]]
+    identity_mapping: Mapped[IdentityMapping] = relationship(back_populates='answers')
+    question_survey: Mapped[QuestionSurveys] = relationship(back_populates='answers')
+    area: Mapped[Area] = relationship(back_populates='answers')

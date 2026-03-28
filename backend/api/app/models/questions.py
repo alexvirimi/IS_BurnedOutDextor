@@ -29,10 +29,7 @@ class Question(Base):
         init=False
     )
     
-    hash_name: Mapped[Optional[str]] = mapped_column(
-        String,
-        ForeignKey('identity_mapping.hname')
-    )    
-    psicometric_var: Mapped[str]= mapped_column(String)
+    text: Mapped[str] = mapped_column(String(500))  # Survey question text\n    
+    psicometric_variable: Mapped[str] = mapped_column(String(100))  # Associated psychological variable"
     
     question_surveys: Mapped[list[QuestionSurveys]]= relationship(back_populates='question')

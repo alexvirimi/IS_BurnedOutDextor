@@ -27,10 +27,9 @@ class Surveys(Base):
         init=False
     )
 
-    name:Mapped[str]= mapped_column (String(200))
-    aperture_date: Mapped[Date]=mapped_column(Date)
-    finishing_date: Mapped[Date]=mapped_column(Date)
-    status: Mapped[str]= mapped_column (String(200))
-    
-    question_surveys: Mapped[list[QuestionSurveys]]= relationship(back_populates='survey')
-    answers: Mapped[Optional[list[Answer]]] = relationship (back_populates= 'survey')
+    name: Mapped[str] = mapped_column(String(200))
+    aperture_date: Mapped[Date] = mapped_column(Date)
+    finishing_date: Mapped[Date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(200))
+
+    question_surveys: Mapped[list[QuestionSurveys]] = relationship(back_populates='survey')
