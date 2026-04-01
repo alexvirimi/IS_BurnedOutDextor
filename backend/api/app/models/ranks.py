@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import uuid
 from typing import TYPE_CHECKING, Optional
 from sqlalchemy import (
     String, 
     ForeignKey,
     Date,
-    Integer
+    Integer,
+    UUID
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -20,12 +23,12 @@ if TYPE_CHECKING:
     
 class Rank(Base):
     
-    __tablename__ = 'ranks'
+    __tablename__ = 'rank'
 
     id: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         default=uuid.uuid4,
-        init=False
+        primary_key=True
     )
     rank_name: Mapped[str] = mapped_column (String(100))
 

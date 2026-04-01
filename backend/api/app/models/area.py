@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import uuid
 from typing import TYPE_CHECKING, Optional
 from sqlalchemy import (
     String, 
-    ForeignKey
+    ForeignKey,
+    UUID
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -22,9 +25,9 @@ if TYPE_CHECKING:
 class Area(Base):
     __tablename__ = 'area'
     id: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         default=uuid.uuid4,
-        init=False
+        primary_key=True
     )
     name: Mapped[str] = mapped_column(String(100))
 

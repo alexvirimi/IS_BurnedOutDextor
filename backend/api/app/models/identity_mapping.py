@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import uuid
 from typing import TYPE_CHECKING
 from sqlalchemy import (
     String, 
     Integer, 
-    ForeignKey
+    ForeignKey,
+    UUID
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -22,13 +25,13 @@ class IdentityMapping(Base):
     __tablename__ = 'identity_mapping'
     
     id: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         default=uuid.uuid4,
-        init=False
+        primary_key=True
     )
     
     id_worker: Mapped[uuid.UUID] = mapped_column(       
-    String(36),
+    UUID(as_uuid=True),
     ForeignKey('worker.id')   
     
     )  

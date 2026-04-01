@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import uuid
 from typing import TYPE_CHECKING
 from sqlalchemy import (
     String,
     Integer,
-    ForeignKey
+    ForeignKey,
+    UUID
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -24,9 +27,9 @@ class Worker(Base):
     __tablename__ = 'worker'
 
     id: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         default=uuid.uuid4,
-        init=False
+        primary_key=True
     )
     name: Mapped[str] = mapped_column(String(100))
     last_names: Mapped[str] = mapped_column(String(150))
@@ -34,16 +37,16 @@ class Worker(Base):
     gender: Mapped[str] = mapped_column(String(20))  # Demographics for survey analysis
 
     id_group: Mapped[uuid.UUID] = mapped_column(
-        String(36), 
+        UUID(as_uuid=True), 
         ForeignKey('group.id')
     )
-    id_rank: Mapped[int] = mapped_column(
-        Integer,
+    id_rank: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
         ForeignKey('rank.id')
     )
 
-    group: Mapped[Group] = relationship(back_populates='workers')
-    group_leader: Mapped[Group] = relationship(back_populates='worker_leader')
+    group: Mapped[Group] = relationship(back_populates='workers', foreign_keys=[id_group])
+    group_leader: Mapped[Group] = relationship(back_populates='worker_leader', foreign_keys='Group.id_leader')
     rank: Mapped[Rank] = relationship(back_populates='workers')
-    mapping: Mapped[IdentityMapping] = relationship(back_populates='workers')
+    mapping: Mapped[IdentityMapping] = relationship(back_populates='worker')
     company: Mapped[Company] = relationship(back_populates='worker')

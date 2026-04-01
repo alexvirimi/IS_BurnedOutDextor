@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import uuid
 from typing import TYPE_CHECKING, Optional
 from sqlalchemy import (
     String, 
     ForeignKey,
     Date,
-    Integer
+    Integer,
+    UUID
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -16,15 +19,15 @@ from .base import Base
 
 if TYPE_CHECKING:
     from .question_surveys import QuestionSurveys
-    from .answer import Answer
+    from .result import Result
 
 class Surveys(Base):
-    __tablename__ = 'surveys'
+    __tablename__ = 'survey'
 
     id: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         default=uuid.uuid4,
-        init=False
+        primary_key=True
     )
 
     name: Mapped[str] = mapped_column(String(200))
@@ -33,3 +36,4 @@ class Surveys(Base):
     status: Mapped[str] = mapped_column(String(200))
 
     question_surveys: Mapped[list[QuestionSurveys]] = relationship(back_populates='survey')
+    results: Mapped[list[Result]] = relationship(back_populates='survey')
