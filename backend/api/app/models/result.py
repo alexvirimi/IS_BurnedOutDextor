@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import uuid
 from typing import TYPE_CHECKING, Optional
 from sqlalchemy import (
     String, 
     ForeignKey,
     Date,
-    Integer
+    Integer,
+    UUID
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -21,12 +24,12 @@ if TYPE_CHECKING:
     from .surveys import Surveys
     
 class Result(Base):
-    __tablename__ = 'results'
+    __tablename__ = 'result'
 
     id: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         default=uuid.uuid4,
-        init=False
+        primary_key=True
     )
     
     burnout_score: Mapped[str] = mapped_column(String(36))
@@ -37,18 +40,18 @@ class Result(Base):
     )
     
     id_group: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         ForeignKey ('group.id')
     )
     
     id_area: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         ForeignKey ('area.id')
     )
     
     id_surveys: Mapped[uuid.UUID] = mapped_column(
-        String(36),
-        ForeignKey ('surveys.id')
+        UUID(as_uuid=True),
+        ForeignKey ('survey.id')
     )
     
     generation_date: Mapped[Date] = mapped_column(Date)

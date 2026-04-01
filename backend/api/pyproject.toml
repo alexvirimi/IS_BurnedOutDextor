@@ -1,27 +1,24 @@
-[project]
+[tool.poetry]
 name = "inbudex-api"
 version = "0.1.0"
 description = "Backend API for Inbudex"
-authors = [
-    {name = "Your Name",email = "you@example.com"}
-]
+authors = ["Your Name <you@example.com>"]
 readme = "README.md"
-requires-python = ">=3.12, <4.0"
-dependencies = [
-    "sqlalchemy (>=2.0.48,<3.0.0)"
-]
-
-
-[tool.poetry]
-name = "inbudex-api"
 package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.12, <4.0"
+fastapi = ">=0.115.0,<1.0.0"
+uvicorn = {extras = ["standard"], version = ">=0.30.0,<1.0.0"}
+sqlalchemy = ">=2.0.48,<3.0.0"
+psycopg = {extras = ["binary"], version = ">=3.2.0,<4.0.0"}
+pydantic = ">=2.0.0,<3.0.0"
+pydantic-settings = ">=2.0.0,<3.0.0"
+
+[tool.poetry.group.dev.dependencies]
+mypy = ">=1.19.1,<2.0.0"
+pytest = ">=9.0.2,<10.0.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[dependency-groups]
-dev = [
-    "mypy (>=1.19.1,<2.0.0)",
-    "pytest (>=9.0.2,<10.0.0)"
-]

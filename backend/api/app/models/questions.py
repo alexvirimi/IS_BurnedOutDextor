@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import uuid
 from typing import TYPE_CHECKING, Optional
 from sqlalchemy import (
     String, 
     ForeignKey,
     Date,
-    Integer
+    Integer,
+    UUID
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -24,9 +27,9 @@ class Question(Base):
     __tablename__ = 'question'
 
     id: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         default=uuid.uuid4,
-        init=False
+        primary_key=True
     )
     
     text: Mapped[str] = mapped_column(String(500))  # Survey question text\n    

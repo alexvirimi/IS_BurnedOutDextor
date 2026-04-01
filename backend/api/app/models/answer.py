@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import uuid
 from typing import TYPE_CHECKING, Optional
 from sqlalchemy import (
     String, 
     ForeignKey,
     Date,
-    Integer
+    Integer,
+    UUID
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -24,24 +27,24 @@ class Answer(Base):
     __tablename__ = 'answer'
 
     id: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         default=uuid.uuid4,
-        init=False
+        primary_key=True
     )
     hash_user: Mapped[str] = mapped_column(
         String,
         ForeignKey('identity_mapping.hash_user')  # Anonymized reference to worker
     )
     id_group: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         ForeignKey('group.id')
     )
     id_area: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         ForeignKey('area.id')
     )
     id_question_survey: Mapped[uuid.UUID] = mapped_column(
-        String(36),
+        UUID(as_uuid=True),
         ForeignKey('question_survey.id')
     )
     value: Mapped[int] = mapped_column(Integer)
