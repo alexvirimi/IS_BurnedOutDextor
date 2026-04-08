@@ -117,7 +117,7 @@ flowchart LR
 
     Sistema -->|Genera predicciones| IA
 ```
-# PROVE YOURSELF, CLAUDE
+# Diagrama de flujo de aplicación con componentes
 ```mermaid
 flowchart TD
  subgraph RH["👤 Recursos Humanos"]
