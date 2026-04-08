@@ -19,9 +19,9 @@ from .base import Base
 if TYPE_CHECKING:
     from .groups import Group
     from .ranks import Rank
-    from .identity_mapping import IdentityMapping
     from .company import Company
-
+    from .answer import Answer
+    from .result import Result
 
 class Worker(Base):
     __tablename__ = 'worker'
@@ -48,5 +48,6 @@ class Worker(Base):
     group: Mapped[Group] = relationship(back_populates='workers', foreign_keys=[id_group])
     group_leader: Mapped[Group] = relationship(back_populates='worker_leader', foreign_keys='Group.id_leader')
     rank: Mapped[Rank] = relationship(back_populates='workers')
-    mapping: Mapped[IdentityMapping] = relationship(back_populates='worker')
+    answers: Mapped[list[Answer]] = relationship(back_populates='workers')
     company: Mapped[Company] = relationship(back_populates='worker')
+    results: Mapped[list[Result]]= relationship (back_populates='workers')

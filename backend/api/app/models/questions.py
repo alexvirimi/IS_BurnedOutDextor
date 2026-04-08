@@ -19,7 +19,6 @@ from .base import Base
 
 if TYPE_CHECKING:
     from .groups import Group
-    from .identity_mapping import IdentityMapping
     from .area import Area
     from .question_surveys import QuestionSurveys
 

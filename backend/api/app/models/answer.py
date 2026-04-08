@@ -19,10 +19,9 @@ from .base import Base
 
 if TYPE_CHECKING:
     from .groups import Group
-    from .identity_mapping import IdentityMapping
     from .area import Area
     from .question_surveys import QuestionSurveys
-
+    from .workers import Worker
 class Answer(Base):
     __tablename__ = 'answer'
 
@@ -31,9 +30,9 @@ class Answer(Base):
         default=uuid.uuid4,
         primary_key=True
     )
-    hash_user: Mapped[str] = mapped_column(
-        String,
-        ForeignKey('identity_mapping.hash_user')  # Anonymized reference to worker
+    id_worker: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey('worker.id')  
     )
     id_group: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -51,6 +50,6 @@ class Answer(Base):
     created_at: Mapped[Date] = mapped_column(Date)
     
     group: Mapped[Group] = relationship(back_populates='answers')
-    identity_mapping: Mapped[IdentityMapping] = relationship(back_populates='answers')
+    workers: Mapped[list[Worker]] = relationship(back_populates='answers')
     question_survey: Mapped[QuestionSurveys] = relationship(back_populates='answers')
     area: Mapped[Area] = relationship(back_populates='answers')

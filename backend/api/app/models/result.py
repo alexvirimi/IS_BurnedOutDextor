@@ -20,7 +20,7 @@ from .base import Base
 if TYPE_CHECKING:
     from .area import Area
     from .groups import Group
-    from .identity_mapping import IdentityMapping
+    from .workers import Worker
     from .surveys import Surveys
     
 class Result(Base):
@@ -34,9 +34,9 @@ class Result(Base):
     
     burnout_score: Mapped[str] = mapped_column(String(36))
     
-    hash_user: Mapped[str] = mapped_column (
-        String,
-        ForeignKey('identity_mapping.hash_user')
+    id_worker: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey('worker.id')
     )
     
     id_group: Mapped[uuid.UUID] = mapped_column(
@@ -49,14 +49,14 @@ class Result(Base):
         ForeignKey ('area.id')
     )
     
-    id_surveys: Mapped[uuid.UUID] = mapped_column(
+    id_survey: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey ('survey.id')
     )
     
     generation_date: Mapped[Date] = mapped_column(Date)
 
-    identity_mapping: Mapped[IdentityMapping] = relationship(back_populates='results')
+    workers: Mapped[Worker] = relationship(back_populates='results')
     survey: Mapped[Surveys] = relationship(back_populates='results')
     area: Mapped[Area] = relationship(back_populates='results')
     group: Mapped[Group] = relationship(back_populates='results')
