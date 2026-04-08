@@ -1,0 +1,3 @@
+Se plantea como solución a la situación problema, entrenar e implementar un agente de inteligencia artificial a modo de árbol de decisiones que sea capaz de predecir con exactitud si un empleado es propenso a sufrir de burnout laboral dentro de las próximas semanas o meses.
+
+La IA tomará las respuestas de las encuestas de burnout actualmente estandarizadas a nivel global para evaluar cada formulario llenado. Para esto, se la IA será capaz de dividir y analizar cada componente de burnout por separado (desrealización, fatiga, etc.). Posteriormente, se mostrarán los resultados individuales y colectivos por área dentro de la empresa dentro de dashboards.
