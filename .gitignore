@@ -24,3 +24,7 @@ venv/
 # Markdown (documentación de prueba - archivos creados por el asistente)
 # Todos los MDs de documentación están en /temp-docs/ que está ignorado
 temp-docs/
+
+init_db.py
+app/config.py
+test.db
