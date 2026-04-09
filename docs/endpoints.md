@@ -24,7 +24,7 @@ no es una tabla pero puede que se necesite para conectar las anteriores. es un p
 | ------ | ---------- | -------------------------------------------------------------- | ---------- |
 | `POST` | /ml/predit | Ejecuta predicción de riesgo de burnout con datos consolidados | -          |
 # TO DO
-![[Pasted image 20260406152211.png]]
+
 Todas estas tablas son Read Only para no meternos con lógica de empresa
 # Tabla Rank
 Read only
