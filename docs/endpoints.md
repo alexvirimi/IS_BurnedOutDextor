@@ -5,8 +5,9 @@ Solo Create + Read, aún no necesita Delete ni Update en el MVP
 | Método | Endpoint                  | Descripción                                                              | Parámetros           |
 | ------ | ------------------------- | ------------------------------------------------------------------------ | -------------------- |
 | `POST` | /answers                  | Registra una respuesta individual de encuesta                            | -                    |
-| `GET`  | /answers/user/{hash_user} | Obtiene todas las respuestas de un usuario para construcción de features | `hash_user`          |
+| `GET`  | /answers/user/{user_id}   | Obtiene todas las respuestas de un usuario para construcción de features | `user_id`            |
 | `GET`  | /answers/aggregate        | Obtiene métricas agregadas de respuestas por área o grupo                | `area_id` `group_id` |
+
 Es la **fuente principal de datos para el modelo de IA**
 
 # Tabla Area
@@ -23,27 +24,27 @@ no es una tabla pero puede que se necesite para conectar las anteriores. es un p
 | Método | Endpoint   | Descripción                                                    | Parámetros |
 | ------ | ---------- | -------------------------------------------------------------- | ---------- |
 | `POST` | /ml/predit | Ejecuta predicción de riesgo de burnout con datos consolidados | -          |
-# TO DO
 
-Todas estas tablas son Read Only para no meternos con lógica de empresa
+Todas estas tablas de aquí en adelante son Read Only para no meternos con lógica de empresa
+
 # Tabla Rank
 Read only
 
 | Método | Endpoint          | Descripción                                                  | Parámetros  |
 | ------ | ----------------- | ------------------------------------------------------------ | ----------- |
 | `GET`  | /rank             | Obtiene la lista de todos los rangos presentes en la empresa | -           |
-| `GET`  | /rank/{hash_user} | Obtiene el rango al que pertenece un usuario                 | `hash_user` |
+| `GET`  | /rank/{user_id} | Obtiene el rango al que pertenece un usuario                 | `user_id` |
 # Tabla Worker
 Read only (AI purposes), no nos vamos a meter con la lógica de la empresa
 
 | Método | Endpoint            | Descripción                                                         | Parámetros  |
 | ------ | ------------------- | ------------------------------------------------------------------- | ----------- |
-| `GET`  | /worker/{hash_user} | Obtiene todos los campos del trabajador menos el nombre y apellidos | `hash_user` |
+| `GET`  | /worker/{user_id} | Obtiene todos los campos del trabajador menos el nombre y apellidos | `user_id` |
 # Tabla Company
 
 | Método | Endpoint             | Descripción                                                                                                     | Parámetros  |
 | ------ | -------------------- | --------------------------------------------------------------------------------------------------------------- | ----------- |
-| `GET`  | /company/{hash_user} | Obtiene todos los campos del trabajador respecto a la tabla company, tales como tareas, faltas, ubicación, etc. | `hash_user` |
+| `GET`  | /company/{user_id} | Obtiene todos los campos del trabajador respecto a la tabla company, tales como tareas, faltas, ubicación, etc. | `user_id` |
 # Tabla Group
 
 | Método | Endpoint          | Descripción                                                                       | Parámetros |
