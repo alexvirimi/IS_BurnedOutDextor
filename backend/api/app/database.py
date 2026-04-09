@@ -18,10 +18,4 @@ SessionLocal = sessionmaker(
 )
 
 
-def get_db() -> Session:
-    """Dependencia para obtener la sesión de BD en FastAPI"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
