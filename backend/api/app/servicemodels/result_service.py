@@ -3,7 +3,7 @@ from app.dbmodels import Result
 from sqlalchemy.orm import Session
 from uuid import UUID
 from fastapi import HTTPException, status
-from app.dbmodels import Group, Worker, Area, Survey
+from app.dbmodels import Group, Worker, Area, Surveys
 
 #En la tabla area solo se pueden realizar las lecturas de la misma.
 class ResultService:
@@ -38,8 +38,8 @@ class ResultService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="El área no existe"
             )
-        survey = ur(Survey, self.db).get_by_id(data["id_survey"])
-        if not survey:
+        surveys = ur(Surveys, self.db).get_by_id(data["id_survey"])
+        if not surveys:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="La encuesta no existe"
