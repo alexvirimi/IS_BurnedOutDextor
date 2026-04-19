@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from uuid import UUID
-from sqlalchemy import Date
+from datetime import date 
 
 class CompanyCreate (BaseModel):                # Crea los detalles empresariales de un empleado
     assigned_tasks: int
@@ -9,7 +9,7 @@ class CompanyCreate (BaseModel):                # Crea los detalles empresariale
     employee_calls: int  
     worker_type: str  
     location: str
-    start_date: Date
+    start_date: date
 
 class CompanyResponse(BaseModel):
     id: UUID
@@ -20,5 +20,5 @@ class CompanyResponse(BaseModel):
     employee_calls: int  
     worker_type: str  
     location: str
-    start_date: Date
+    start_date: date
     model_config = {"from_attributes": True}    # devuelve toda la información (id y nombre) de un rango

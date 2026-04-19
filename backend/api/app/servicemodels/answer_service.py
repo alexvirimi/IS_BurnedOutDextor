@@ -43,3 +43,10 @@ class AnswerService:
                 detail="La pregunta no existe"
             )    
         return self.repo.create(data)    
+    
+    def create_answers_bulk(self, answers: list): #funcion que recibe una lista de respuetas y las mete en la db para que se puedan responder todas a la vez, en vez de una por una.
+        results = []
+        for answer in answers:
+            created = self.create_answer(answer.model_dump())
+            results.append(created)
+        return results

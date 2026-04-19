@@ -12,7 +12,7 @@ def read_questions(db: Session = Depends(get_db)):                              
     service = QuestionService(db)
     return service.get_questions()
 
-@router.get("/{question_id}", response_model=list[QuestionResponse])                                                   # endpoint que obtiene la información de una pregunta dada su UUID
+@router.get("/{question_id}", response_model=QuestionResponse)                                                   # endpoint que obtiene la información de una pregunta dada su UUID
 def read_question(question_id: UUID, db: Session = Depends(get_db)):
     service = QuestionService(db)
     question = service.get_question(question_id)

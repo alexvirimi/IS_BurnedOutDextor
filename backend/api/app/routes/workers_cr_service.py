@@ -7,7 +7,7 @@ from uuid import UUID
 
 router = APIRouter(prefix="/worker", tags=["Worker"])
 
-@router.get("/{worker_id}", response_model=list[WorkerResponse])                                                   # endpoint que obtiene la información de un trabajador dada su UUID
+@router.get("/{worker_id}", response_model=WorkerResponse)                                                   # endpoint que obtiene la información de un trabajador dada su UUID
 def read_worker_info(worker_id: UUID, db: Session = Depends(get_db)):
     service = WorkerService(db)
     worker = service.get_worker(worker_id)

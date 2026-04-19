@@ -1,6 +1,7 @@
 from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Optional
+from enum import IntEnum
 from sqlalchemy import (
     String, 
     ForeignKey,
@@ -21,6 +22,14 @@ if TYPE_CHECKING:
     from .area import Area
     from .question_surveys import QuestionSurveys
     from .workers import Worker
+    
+class AnswerEnum (IntEnum): #Si vamos a acotarlo a respuestas por numero, entonces usaré enum para limitar las respuestas a 5 opciones
+    NUNCA = 1
+    CASI_NUNCA = 2
+    A_VECES = 3
+    CASI_SIEMPRE = 4
+    SIEMPRE = 5
+    
 class Answer(Base):
     __tablename__ = 'answer'
 
@@ -45,10 +54,10 @@ class Answer(Base):
         UUID(as_uuid=True),
         ForeignKey('question_survey.id')
     )
-    value: Mapped[int] = mapped_column(Integer)
+    value: Mapped[AnswerEnum] = mapped_column(Integer)
     created_at: Mapped[Date] = mapped_column(Date)
     
     group: Mapped[Group] = relationship(back_populates='answers')
-    workers: Mapped[list[Worker]] = relationship(back_populates='answers')
+    workers: Mapped[Worker] = relationship(back_populates='answers')  # ← Worker, no list[Worker]
     question_survey: Mapped[QuestionSurveys] = relationship(back_populates='answers')
     area: Mapped[Area] = relationship(back_populates='answers')

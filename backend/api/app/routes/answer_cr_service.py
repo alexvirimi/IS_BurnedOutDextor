@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.servicemodels.answer_service import AnswerService
-from app.schemas.answer_scheme import AnswerResponse, AnswerCreate
+from app.schemas.answer_scheme import AnswerResponse, AnswerCreate, AnswerBulkCreate
 from uuid import UUID
 
 router = APIRouter(prefix="/answers", tags=["Answers"])
@@ -24,3 +24,8 @@ def read_answer(answer_id: UUID, db: Session = Depends(get_db)):
 def create_answer(payload: AnswerCreate, db: Session = Depends(get_db)):
     service = AnswerService(db)
     return service.create_answer(payload.model_dump())
+
+@router.post("/bulk", response_model=list[AnswerResponse], status_code=status.HTTP_201_CREATED)
+def create_answers_bulk(payload: AnswerBulkCreate, db: Session = Depends(get_db)):
+    service = AnswerService(db)
+    return service.create_answers_bulk(payload.answers)
