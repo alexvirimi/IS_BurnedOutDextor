@@ -3,7 +3,7 @@ from app.dbmodels import Surveys
 from sqlalchemy.orm import Session 
 from uuid import UUID
 
-from backend.api.app.dbmodels import questions
+# from backend.api.app.dbmodels import questions
 
 # C + R, puede que D a futuro. #Nani?!
 class SurveyService:

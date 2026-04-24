@@ -1,4 +1,4 @@
-from app.controllers.cr_controller import UniversalRepository as ur
+from app.controllers.crud_controller import UniversalRepository as ur
 from app.dbmodels import Question
 from sqlalchemy.orm import Session 
 from uuid import UUID
@@ -17,6 +17,8 @@ class QuestionService:
     def create_question(self, data: dict):          # crea una pregunta dados todos sus parámetros
         return self.repo.create(data)
     
-# TO DO:
-# - Crear la función de Update
-# - Crear la función de Delete
+    def update_question(self, id: UUID, data: dict):  # actualiza una pregunta dada su UUID y los datos a actualizar
+        return self.repo.update(id, data)
+    
+    def delete_question(self, id: UUID):             # elimina una pregunta dada su UUID
+        return self.repo.delete_by_id(id)

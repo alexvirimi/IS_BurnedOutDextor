@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.servicemodels.questions_service import QuestionService
-from app.schemas.questions_scheme import QuestionResponse, QuestionCreate
+from app.schemas.questions_scheme import QuestionResponse, QuestionCreate, QuestionUpdate
 from uuid import UUID
 
 router = APIRouter(prefix="/question", tags=["Question"])
@@ -24,3 +24,22 @@ def read_question(question_id: UUID, db: Session = Depends(get_db)):
 def create_question(payload: QuestionCreate, db: Session = Depends(get_db)):
     service = QuestionService(db)
     return service.create_question(payload.model_dump())
+
+@router.put("/{question_id}", response_model=QuestionResponse)  # Confieso mis pecados ante Cristo. Endpoint que actualiza una pregunta
+def update_question(question_id: UUID, payload: QuestionUpdate, db: Session = Depends(get_db)):
+    service = QuestionService(db)
+    # Use exclude_unset=True to only update fields that were provided in the request
+    question = service.update_question(question_id, payload.model_dump(exclude_unset=True))
+    if not question:  # If the question wasn't found
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregunta no encontrada")
+    return question  # Return the updated question
+
+@router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)  # DELETE endpoint for removing a question
+def delete_question(question_id: UUID, db: Session = Depends(get_db)):
+    service = QuestionService(db)
+    deleted = service.delete_question(question_id)  # Try to delete
+    if not deleted:  # If the question wasn't found
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregunta no encontrada")
+    # No return value needed for 204 No Content
+    
+# I refuse to commit this until I completely understand it. I reject the vibe-code. - Juanca 21/04/2026, 11:15 PM.
