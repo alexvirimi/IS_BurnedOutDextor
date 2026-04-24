@@ -12,6 +12,8 @@ def read_ranks(db: Session = Depends(get_db)):
     service = RankService(db)
     return service.get_ranks()
 
+
+
 @router.get("/{rank_id}", response_model=RankResponse) # endpoint que recibe un ID de rank y lo trae
 def read_rank(rank_id: UUID, db: Session = Depends(get_db)):
     service = RankService(db)

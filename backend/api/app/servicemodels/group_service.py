@@ -24,24 +24,28 @@ class GroupService:
 
     def get_group_by_id(self, id: UUID):
         return self.repo.get_by_id(id)
-
-    def create_group(self, data: dict): 
-        leader = ur(Worker, self.db).get_by_id(data["id_worker"])
+    
+def create_group(self, data: dict): 
+    if data.get("id_leader"):
+        leader = ur(Worker, self.db).get_by_id(data["id_leader"])
         if not leader:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="El worker no existe"
+                detail="El worker líder no existe"
             )
-        area = ur(Area, self.db).get_by_id(data["id_area"])
-        if not area:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="El área no existe"
-            )
-        surveys = ur(Surveys, self.db).get_by_id(data["id_surveys"])
-        if not surveys:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="La encuesta no existe"
-            )    
-        return self.repo.create(data)    
+
+    area = ur(Area, self.db).get_by_id(data["id_area"])
+    if not area:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El área no existe"
+        )
+
+    surveys = ur(Surveys, self.db).get_by_id(data["id_surveys"])
+    if not surveys:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="La encuesta no existe"
+        )
+
+    return self.repo.create(data)

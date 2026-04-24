@@ -21,11 +21,7 @@ def read_answer(answer_id: UUID, db: Session = Depends(get_db)):
     return answer
 
 @router.post("/", response_model=AnswerResponse, status_code=status.HTTP_201_CREATED)#Endpoint que crea un answer
-def create_answer(payload: AnswerCreate, db: Session = Depends(get_db)):
+def create_answer(payload: AnswerCreate = Depends(AnswerCreate.as_form), db: Session = Depends(get_db)):
     service = AnswerService(db)
     return service.create_answer(payload.model_dump())
 
-@router.post("/bulk", response_model=list[AnswerResponse], status_code=status.HTTP_201_CREATED)
-def create_answers_bulk(payload: AnswerBulkCreate, db: Session = Depends(get_db)):
-    service = AnswerService(db)
-    return service.create_answers_bulk(payload.answers)

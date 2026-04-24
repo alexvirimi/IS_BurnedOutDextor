@@ -21,6 +21,6 @@ def read_area(area_id: UUID, db: Session = Depends(get_db)):
     return area
 
 @router.post("/", response_model=AreaResponse, status_code=status.HTTP_201_CREATED)
-def create_area(payload: AreaCreate, db: Session = Depends(get_db)):
+def create_area(payload: AreaCreate = Depends(AreaCreate.as_form), db: Session = Depends(get_db)): #En el endpoint solo cambia que dentro de la funcion se debe poner .as_form para que se mande un form 
     service = AreaService(db)
     return service.create_area(payload.model_dump())
