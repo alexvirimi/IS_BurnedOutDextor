@@ -42,6 +42,3 @@ class QuestionSurveyService:
             self.repo.db.refresh(r)
 
         return relations
-# TO DO:
-# - Crear la función de Update
-# - Crear la función de Delete
