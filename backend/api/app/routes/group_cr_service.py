@@ -18,12 +18,12 @@ def create_group(group: GroupCreate= Depends (GroupCreate.as_form), db: Session 
     if group.id_leader:
         worker = db.query(Worker).filter(Worker.id == group.id_leader).first()
         if not worker:
-            raise HTTPException(status_code=404, detail="Leader worker not found")
+            raise HTTPException(status_code=404, detail="Trabajador lider no encontrado")
 
     new_group = Group(
         name=group.name,
         id_area=group.id_area,
-        id_leader=group.id_leader  # puede ser None
+        id_leader=group.id_leader  
     )
 
     db.add(new_group)
@@ -36,13 +36,13 @@ def create_group(group: GroupCreate= Depends (GroupCreate.as_form), db: Session 
 def assign_leader(group_id: UUID, data: GroupAssignLeader = Depends(GroupAssignLeader.as_form), db: Session = Depends(get_db)):
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="Group not found")
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
     
     worker = db.query(Worker).filter(Worker.id == data.id_leader).first()
     if not worker:
-        raise HTTPException(status_code=404, detail="Worker not found")
+        raise HTTPException(status_code=404, detail="Trabajador no encontrado")
     if worker.id_group != group_id:
-        raise HTTPException(status_code=400, detail="Worker must belong to this group")
+        raise HTTPException(status_code=400, detail="El trabajador no pertenece a este grupo")
     
     group.id_leader = data.id_leader
     db.commit()
@@ -58,19 +58,6 @@ def get_groups(db: Session = Depends(get_db)):
 def get_group(group_id: UUID, db: Session = Depends(get_db)):
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="Group not found")
+        raise HTTPException(status_code=404, detail="Grupo no encontrado")
     return group
 
-
-@router.put("/{group_id}", response_model=GroupResponse)
-def update_group(group_id: UUID, group_data : GroupUpdate = Depends(GroupUpdate.as_form), db: Session = Depends(get_db)):
-    group = db.query(Group).filter(Group.id == group_id).first()
-    if not group:
-        raise HTTPException(status_code=404, detail="Group not found")
-    
-    for key, value in group_data.model_dump(exclude_unset=True).items():
-        setattr(group, key, value)
-    
-    db.commit()
-    db.refresh(group)
-    return group
