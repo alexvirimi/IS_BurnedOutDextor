@@ -4,7 +4,7 @@ from datetime import date
 
 class SurveyCreate(BaseModel):
     name: str
-    apreture_date: date
+    aperture_date: date
     finishing_date: date
     status: str
 
@@ -27,7 +27,7 @@ class SurveyWithQuestions(BaseModel):
 class SurveyResponse(BaseModel):
     id: UUID
     name: str
-    apreture_date: date
+    aperture_date: date
     finishing_date: date
     status: str
     model_config = {"from_attributes": True}
