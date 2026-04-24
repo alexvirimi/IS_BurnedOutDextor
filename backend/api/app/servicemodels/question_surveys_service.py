@@ -2,6 +2,7 @@ from app.controllers.crud_controller import UniversalRepository as ur
 from app.dbmodels import QuestionSurveys
 from sqlalchemy.orm import Session 
 from uuid import UUID
+from app.schemas.question_surveys_scheme import QuestionSurveyBulkCreate
 
 # Deberá tener CRUD completo, sin embargo será solo C+R por ahora.
 class QuestionSurveyService:
@@ -23,6 +24,24 @@ class QuestionSurveyService:
     def delete_question_survey(self, id: UUID):             # elimina una relación pregunta+encuesta dada su UUID
         return self.repo.delete_by_id(id)
     
+  
+    def assign_questions(self, payload):
+        relations = []
+
+        for question_id in payload.question_ids:  
+            relation = QuestionSurveys(
+                id_survey=payload.id_survey,
+                id_question=question_id
+            )
+            self.repo.db.add(relation)
+            relations.append(relation)
+
+        self.repo.db.commit()
+
+        for r in relations:
+            self.repo.db.refresh(r)
+
+        return relations
 # TO DO:
 # - Crear la función de Update
 # - Crear la función de Delete

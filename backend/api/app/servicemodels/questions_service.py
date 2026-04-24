@@ -22,3 +22,4 @@ class QuestionService:
     
     def delete_question(self, id: UUID):             # elimina una pregunta dada su UUID
         return self.repo.delete_by_id(id)
+    

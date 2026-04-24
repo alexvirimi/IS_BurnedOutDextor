@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.servicemodels.question_surveys_service import QuestionSurveyService
-from app.schemas.question_surveys_scheme import QuestionSurveyResponse, QuestionSurveyCreate, QuestionSurveyUpdate
+from app.schemas.question_surveys_scheme import AssignQuestions, QuestionSurveyBulkCreate, QuestionSurveyResponse, QuestionSurveyCreate, QuestionSurveyUpdate
 from uuid import UUID
 
 router = APIRouter(prefix="/question_survey", tags=["QuestionSurvey"])
@@ -42,3 +42,8 @@ def delete_question_survey(question_survey_id: UUID, db: Session = Depends(get_d
     if not deleted:  # If the question wasn't found
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregunta no encontrada")
     # No return value needed for 204 No Content
+
+@router.post("/assign")
+def assign_questions(payload: AssignQuestions= Depends(AssignQuestions.as_form), db: Session = Depends(get_db)):
+    service = QuestionSurveyService(db)
+    return service.assign_questions(payload)

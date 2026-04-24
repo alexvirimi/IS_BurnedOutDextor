@@ -36,13 +36,14 @@ class Group(Base):
         UUID(as_uuid=True),
         ForeignKey('area.id')
     )
-    id_leader: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey('worker.id')
-    )
+    id_leader: Mapped[Optional[uuid.UUID]] = mapped_column(
+    UUID(as_uuid=True),
+    ForeignKey('worker.id'),
+    nullable=True
+)
 
     workers: Mapped[Optional[list[Worker]]] = relationship(back_populates='group', foreign_keys='Worker.id_group')
-    worker_leader: Mapped[Worker] = relationship(back_populates='group_leader', foreign_keys='Group.id_leader')
+    worker_leader: Mapped[Optional[Worker]] = relationship(back_populates='group_leader', foreign_keys='Group.id_leader')
     area: Mapped[Area] = relationship(back_populates='groups')
     answers:Mapped[list[Answer]] = relationship(back_populates='group')
     results: Mapped[list[Result]] = relationship(back_populates='group')

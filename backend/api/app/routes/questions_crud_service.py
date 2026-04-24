@@ -41,5 +41,3 @@ def delete_question(question_id: UUID, db: Session = Depends(get_db)):
     if not deleted:  # If the question wasn't found
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregunta no encontrada")
     # No return value needed for 204 No Content
-    
-# I refuse to commit this until I completely understand it. I reject the vibe-code. - Juanca 21/04/2026, 11:15 PM.

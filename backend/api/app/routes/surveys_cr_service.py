@@ -4,6 +4,8 @@ from app.database import get_db
 from app.servicemodels.surveys_service import SurveyService
 from app.schemas.surveys_scheme import SurveyResponse, SurveyCreate, SurveyWithQuestions
 from uuid import UUID
+from sqlalchemy.orm import joinedload
+from app.dbmodels import Surveys, QuestionSurveys
 
 router = APIRouter(prefix="/survey", tags=["Survey"])
 
@@ -25,9 +27,4 @@ def create_survey(payload: SurveyCreate, db: Session = Depends(get_db)):
     service = SurveyService(db)
     return service.create_survey(payload.model_dump())
 
-@router.get("/{survey_id}/questions", response_model=SurveyWithQuestions) # endpoint que obtiene la información de una encuesta dada su UUID, pero con sus preguntas asociadas
-def read_survey_with_questions(survey_id: UUID, db: Session = Depends(get_db)):
-    survey = SurveyService(db).get_survey_with_questions(survey_id)
-    if not survey:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Encuesta no encontrada")
-    return survey
+

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from uuid import UUID
-from typing import Optional
+from typing import Optional, List
+from fastapi import Form
 
 class QuestionCreate(BaseModel):                # para crear una pregunta se necesita el texto (la pregunta como tal) y asociarle la variable psicometrica que evalúa
     text: str
