@@ -2,6 +2,7 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.database import engine
@@ -22,6 +23,9 @@ app = FastAPI(
     title="BurnedOutDextor API",
     description="API para el proyecto BurnedOutDextor. Gestiona encuestas, preguntas, respuestas, trabajadores, empresas, áreas, grupos, rangos y resultados.",
     version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 origins = ["*"]
@@ -40,9 +44,9 @@ def on_startup():
     Base.metadata.create_all(bind=engine)
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root():
-    return {"message": "BurnedOutDextor API está en funcionamiento"}
+    return RedirectResponse(url="/docs")
 
 
 app.include_router(area_router)
