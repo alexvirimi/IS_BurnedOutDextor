@@ -1,6 +1,6 @@
 Sujeto a cambios mientras tenemos retroalimentación del docente
 # Tabla Answer
-Solo Create + Read, aún no necesita Delete ni Update en el MVP
+Solo Create + Read, aún no necesita Delete ni Update en el MVP. Testing
 
 | Método | Endpoint                  | Descripción                                                              | Parámetros           |
 | ------ | ------------------------- | ------------------------------------------------------------------------ | -------------------- |
