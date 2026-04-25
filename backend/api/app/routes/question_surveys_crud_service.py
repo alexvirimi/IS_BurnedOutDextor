@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.servicemodels.question_surveys_service import QuestionSurveyService
-from app.schemas.question_surveys_scheme import AssignQuestions, QuestionSurveyBulkCreate, QuestionSurveyResponse, QuestionSurveyCreate, QuestionSurveyUpdate
+from app.schemas.question_surveys_scheme import AssignQuestions, QuestionSurveyResponse, QuestionSurveyBulkCreate, QuestionSurveyCreate, QuestionSurveyUpdate
 from uuid import UUID
 
 router = APIRouter(prefix="/question_survey", tags=["QuestionSurvey"])
@@ -22,12 +22,12 @@ def read_question(question_survey_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=QuestionSurveyResponse, status_code=status.HTTP_201_CREATED)                              # endpoint que crea una pregunta dado un diccionario con sus parámetros
-def create_question(payload: QuestionSurveyCreate, db: Session = Depends(get_db)):
+def create_question(payload: QuestionSurveyCreate = Depends(QuestionSurveyCreate.as_form), db: Session = Depends(get_db)):
     service = QuestionSurveyService(db)
     return service.create_question_survey(payload.model_dump())
 
 @router.put("/{question_survey_id}", response_model=QuestionSurveyResponse)  # Confieso mis pecados ante Cristo. Endpoint que actualiza una pregunta
-def update_question_survey(question_survey_id: UUID, payload: QuestionSurveyUpdate, db: Session = Depends(get_db)):
+def update_question_survey(question_survey_id: UUID, payload: QuestionSurveyUpdate = Depends(QuestionSurveyUpdate.as_form), db: Session = Depends(get_db)):
     service = QuestionSurveyService(db)
     # Use exclude_unset=True to only update fields that were provided in the request
     question_survey = service.update_question_survey(question_survey_id, payload.model_dump(exclude_unset=True))

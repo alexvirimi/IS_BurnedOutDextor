@@ -23,7 +23,7 @@ def read_rank(rank_id: UUID, db: Session = Depends(get_db)):
     return rank
 
 @router.post("/", response_model=RankResponse, status_code=status.HTTP_201_CREATED) # endpoint que crea un rank una vez que se le da
-def create_rank(payload: RankCreate, db: Session = Depends(get_db)):
+def create_rank(payload: RankCreate = Depends(RankCreate.as_form), db: Session = Depends(get_db)):
     service = RankService(db)
     return service.create_rank(payload.model_dump())
 

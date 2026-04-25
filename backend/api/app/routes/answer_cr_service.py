@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.servicemodels.answer_service import AnswerService
-from app.schemas.answer_scheme import AnswerResponse, AnswerCreate, AnswerBulkCreate
+from app.schemas.answer_scheme import AnswerResponse, AnswerCreate
 from uuid import UUID
 
 router = APIRouter(prefix="/answers", tags=["Answers"])

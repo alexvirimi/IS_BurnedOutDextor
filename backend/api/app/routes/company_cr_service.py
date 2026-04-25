@@ -21,6 +21,6 @@ def read_worker_info(worker_info_id: UUID, db: Session = Depends(get_db)):
     return company
 
 @router.post("/", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)                              # crea los detalles de un trabajador dado un diccionario
-def create_worker_info(payload: CompanyCreate, db: Session = Depends(get_db)):
+def create_worker_info(payload: CompanyCreate = Depends(CompanyCreate.as_form), db: Session = Depends(get_db)):
     service = CompanyService(db)
     return service.create_worker_info(payload.model_dump())

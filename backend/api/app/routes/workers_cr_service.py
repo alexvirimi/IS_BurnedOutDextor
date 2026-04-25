@@ -7,7 +7,12 @@ from uuid import UUID
 
 router = APIRouter(prefix="/worker", tags=["Worker"])
 
-@router.get("/{worker_id}", response_model=WorkerResponse)                                                   # endpoint que obtiene la información de un trabajador dada su UUID
+@router.get("/", response_model=list[WorkerResponse], status_code=status.HTTP_200_OK) # consigue todos los trabajadores
+def read_workers(db: Session = Depends(get_db)):
+    service = WorkerService(db)
+    return service.get_workers()
+
+@router.get("/{worker_id}", response_model=WorkerResponse, status_code=status.HTTP_200_OK)                                                   # endpoint que obtiene la información de un trabajador dada su UUID
 def read_worker_info(worker_id: UUID, db: Session = Depends(get_db)):
     service = WorkerService(db)
     worker = service.get_worker(worker_id)
@@ -16,11 +21,11 @@ def read_worker_info(worker_id: UUID, db: Session = Depends(get_db)):
     return worker
 
 @router.post("/", response_model=WorkerResponse, status_code=status.HTTP_201_CREATED)                              # endpoint que crea los detalles de un trabajador dado un diccionario
-def create_worker_info(payload: WorkerCreate, db: Session = Depends(get_db)):
+def create_worker_info(payload: WorkerCreate = Depends(WorkerCreate.as_form), db: Session = Depends(get_db)):
     service = WorkerService(db)
     return service.create_worker(payload.model_dump())
 
-@router.get("/{worker_id}/details", response_model=WorkerDetailResponse)
+@router.get("/{worker_id}/details", response_model=WorkerDetailResponse, status_code=status.HTTP_200_OK) # endpoint que obtiene toda la información de un trabajador dada su UUID, incluyendo el nombre del rango y grupo al que pertenece
 def read_worker_details(worker_id: UUID, db: Session = Depends(get_db)):
     service = WorkerService(db)
     worker = service.get_worker(worker_id)

@@ -7,12 +7,12 @@ from uuid import UUID
 
 router = APIRouter(prefix="/question", tags=["Question"])
 
-@router.get("/", response_model=list[QuestionResponse])
+@router.get("/", response_model=list[QuestionResponse], status_code=status.HTTP_200_OK)  # endpoint que devuelve todas las preguntas creadas
 def read_questions(db: Session = Depends(get_db)):                                                                   # endpoint que devuelve todas las preguntas creadas
     service = QuestionService(db)
     return service.get_questions()
 
-@router.get("/{question_id}", response_model=QuestionResponse)                                                   # endpoint que obtiene la información de una pregunta dada su UUID
+@router.get("/{question_id}", response_model=QuestionResponse, status_code=status.HTTP_200_OK)                                                   # endpoint que obtiene la información de una pregunta dada su UUID
 def read_question(question_id: UUID, db: Session = Depends(get_db)):
     service = QuestionService(db)
     question = service.get_question(question_id)
@@ -21,12 +21,12 @@ def read_question(question_id: UUID, db: Session = Depends(get_db)):
     return question
 
 @router.post("/", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)                              # endpoint que crea una pregunta dado un diccionario con sus parámetros
-def create_question(payload: QuestionCreate, db: Session = Depends(get_db)):
+def create_question(payload: QuestionCreate = Depends(QuestionCreate.as_form), db: Session = Depends(get_db)):
     service = QuestionService(db)
     return service.create_question(payload.model_dump())
 
-@router.put("/{question_id}", response_model=QuestionResponse)  # Confieso mis pecados ante Cristo. Endpoint que actualiza una pregunta
-def update_question(question_id: UUID, payload: QuestionUpdate, db: Session = Depends(get_db)):
+@router.put("/{question_id}", response_model=QuestionResponse, status_code=status.HTTP_200_OK)  # Confieso mis pecados ante Cristo. Endpoint que actualiza una pregunta
+def update_question(question_id: UUID, payload: QuestionUpdate = Depends(QuestionUpdate.as_form), db: Session = Depends(get_db)):
     service = QuestionService(db)
     # Use exclude_unset=True to only update fields that were provided in the request
     question = service.update_question(question_id, payload.model_dump(exclude_unset=True))

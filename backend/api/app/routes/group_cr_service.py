@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
 from app.schemas.group_scheme import GroupCreate, GroupResponse, GroupAssignLeader, GroupUpdate
@@ -6,14 +6,14 @@ from app.dbmodels.groups import Group
 from app.database import get_db
 from app.dbmodels.workers import Worker
 from app.dbmodels.area import Area
-router = APIRouter(prefix="/group", tags=["groups"])
+router = APIRouter(prefix="/group", tags=["Groups"])
 
-@router.post("/", response_model=GroupResponse)
+@router.post("/", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
 def create_group(group: GroupCreate= Depends (GroupCreate.as_form), db: Session = Depends(get_db)):
 
     area = db.query(Area).filter(Area.id == group.id_area).first()
     if not area:
-        raise HTTPException(status_code=404, detail="Area not found")
+        raise HTTPException(status_code=404, detail="Área no encontrada")
 
     if group.id_leader:
         worker = db.query(Worker).filter(Worker.id == group.id_leader).first()
@@ -32,7 +32,7 @@ def create_group(group: GroupCreate= Depends (GroupCreate.as_form), db: Session 
 
     return new_group
 
-@router.patch("/{group_id}/leader", response_model=GroupResponse)
+@router.patch("/{group_id}/leader", response_model=GroupResponse, status_code=status.HTTP_200_OK)
 def assign_leader(group_id: UUID, data: GroupAssignLeader = Depends(GroupAssignLeader.as_form), db: Session = Depends(get_db)):
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
@@ -49,12 +49,12 @@ def assign_leader(group_id: UUID, data: GroupAssignLeader = Depends(GroupAssignL
     db.refresh(group)
     return group
 
-@router.get("/", response_model=list[GroupResponse])
+@router.get("/", response_model=list[GroupResponse], status_code=status.HTTP_200_OK)
 def get_groups(db: Session = Depends(get_db)):
     groups = db.query(Group).all()
     return groups
 
-@router.get("/{group_id}", response_model=GroupResponse)
+@router.get("/{group_id}", response_model=GroupResponse, status_code=status.HTTP_200_OK)
 def get_group(group_id: UUID, db: Session = Depends(get_db)):
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:

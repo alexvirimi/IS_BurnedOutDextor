@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from app.schemas.question_surveys_scheme import QuestionSurveyBulkCreate
 
-# Deberá tener CRUD completo, sin embargo será solo C+R por ahora.
 class QuestionSurveyService:
     def __init__(self, db: Session) -> None:
         self.repo = ur(QuestionSurveys, db)         # modelo + sesión

@@ -21,6 +21,6 @@ def read_result(result_id: UUID, db: Session = Depends(get_db)):
     return result
 
 @router.post("/", response_model=ResultResponse, status_code=status.HTTP_201_CREATED)#Endpoint que crea un result
-def create_result(payload: ResultCreate, db: Session = Depends(get_db)):
+def create_result(payload: ResultCreate = Depends(ResultCreate.as_form), db: Session = Depends(get_db)):
     service = ResultService(db)
     return service.create_result(payload.model_dump())
