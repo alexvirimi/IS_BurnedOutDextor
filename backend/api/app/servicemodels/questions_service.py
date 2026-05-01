@@ -1,5 +1,5 @@
 from app.controllers.crud_controller import UniversalRepository as ur
-from app.dbmodels import Question
+from app.dbmodels import Question, QuestionSurveys, Surveys
 from sqlalchemy.orm import Session 
 from uuid import UUID
 
@@ -7,6 +7,7 @@ from uuid import UUID
 class QuestionService:
     def __init__(self, db: Session) -> None:
         self.repo = ur(Question, db)                # modelo + sesión
+        self.db = db
         
     def get_questions(self):
         return self.repo.get_all()                  # obtiene todas las preguntas que existen
@@ -22,4 +23,14 @@ class QuestionService:
     
     def delete_question(self, id: UUID):             # elimina una pregunta dada su UUID
         return self.repo.delete_by_id(id)
+    
+    def get_surveys_by_question(self, id: UUID):    # obtiene todas las encuestas relacionadas a una pregunta
+        # Hace una query que trae todas las encuestas asociadas a esta pregunta a través de la tabla question_surveys
+        surveys = self.db.query(Surveys).join(
+            QuestionSurveys, 
+            Surveys.id == QuestionSurveys.id_survey
+        ).filter(
+            QuestionSurveys.id_question == id
+        ).all()
+        return surveys
     

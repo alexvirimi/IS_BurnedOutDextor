@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.servicemodels.questions_service import QuestionService
 from app.schemas.questions_scheme import QuestionResponse, QuestionCreate, QuestionUpdate
+from app.schemas.surveys_scheme import SurveyResponse
 from uuid import UUID
 
 router = APIRouter(prefix="/question", tags=["Question"])
@@ -19,6 +20,17 @@ def read_question(question_id: UUID, db: Session = Depends(get_db)):
     if not question:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregunta no encontrada")
     return question
+
+@router.get("/{question_id}/surveys", response_model=list[SurveyResponse], status_code=status.HTTP_200_OK)  # endpoint que devuelve todas las encuestas relacionadas a una pregunta
+def get_surveys_by_question(question_id: UUID, db: Session = Depends(get_db)):
+    service = QuestionService(db)
+    # Verificar que la pregunta existe
+    question = service.get_question(question_id)
+    if not question:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregunta no encontrada")
+    # Obtener las encuestas relacionadas
+    surveys = service.get_surveys_by_question(question_id)
+    return surveys
 
 @router.post("/", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)                              # endpoint que crea una pregunta dado un diccionario con sus parámetros
 def create_question(payload: QuestionCreate = Depends(QuestionCreate.as_form), db: Session = Depends(get_db)):
