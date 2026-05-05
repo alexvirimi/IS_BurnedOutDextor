@@ -1,3 +1,12 @@
+"""
+Este módulo define el modelo de base de datos para los trabajadores (Workers) del sistema.
+Los trabajadores son los usuarios del sistema que participan en encuestas y cuyos resultados
+se registran. Cada trabajador pertenece a un grupo, tiene un rango (nivel jerárquico) y
+una bandera que indica si ha sido marcado por alguna razón (típicamente usada por líderes
+para marcar trabajadores que necesitan atención). Este modelo mantiene la relación con
+grupos, rangos y es referenciado por resultados y respuestas de encuestas.
+"""
+
 from __future__ import annotations
 
 import uuid
@@ -6,7 +15,8 @@ from sqlalchemy import (
     String,
     Integer,
     ForeignKey,
-    UUID
+    UUID,
+    Boolean
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -34,7 +44,9 @@ class Worker(Base):
     name: Mapped[str] = mapped_column(String(100))
     last_names: Mapped[str] = mapped_column(String(150))
     age: Mapped[int] = mapped_column(Integer)
-    gender: Mapped[str] = mapped_column(String(20))  
+    gender: Mapped[str] = mapped_column(String(20))
+    # Bandera para marcar trabajadores (usada por líderes)
+    flag: Mapped[bool] = mapped_column(Boolean, default=False)
 
     id_group: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), 

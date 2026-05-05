@@ -6,11 +6,18 @@ from app.dbmodels.groups import Group
 from app.database import get_db
 from app.dbmodels.workers import Worker
 from app.dbmodels.area import Area
+from app.deps.auth_deps import require_rrhh
+from app.schemas.auth_scheme import CurrentUserData
+
 router = APIRouter(prefix="/group", tags=["Groups"])
 
 @router.post("/", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
-def create_group(group: GroupCreate= Depends (GroupCreate.as_form), db: Session = Depends(get_db)):
-
+# Endpoint que crea un grupo. Solo RRHH puede crear grupos.
+def create_group(
+    group: GroupCreate = Depends(GroupCreate.as_form),
+    current_user: CurrentUserData = Depends(require_rrhh),
+    db: Session = Depends(get_db)
+):
     area = db.query(Area).filter(Area.id == group.id_area).first()
     if not area:
         raise HTTPException(status_code=404, detail="Área no encontrada")
@@ -33,7 +40,13 @@ def create_group(group: GroupCreate= Depends (GroupCreate.as_form), db: Session 
     return new_group
 
 @router.patch("/{group_id}/leader", response_model=GroupResponse, status_code=status.HTTP_200_OK)
-def assign_leader(group_id: UUID, data: GroupAssignLeader = Depends(GroupAssignLeader.as_form), db: Session = Depends(get_db)):
+# Endpoint que asigna un líder a un grupo. Solo RRHH puede asignar líderes.
+def assign_leader(
+    group_id: UUID,
+    data: GroupAssignLeader = Depends(GroupAssignLeader.as_form),
+    current_user: CurrentUserData = Depends(require_rrhh),
+    db: Session = Depends(get_db)
+):
     group = db.query(Group).filter(Group.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Grupo no encontrado")

@@ -6,6 +6,8 @@ from app.schemas.surveys_scheme import SurveyResponse, SurveyCreate, SurveyWithQ
 from uuid import UUID
 from sqlalchemy.orm import joinedload
 from app.dbmodels import Surveys, QuestionSurveys
+from app.deps.auth_deps import require_rrhh  # Importación añadida
+from app.schemas.auth_scheme import CurrentUserData # Importación añadida
 
 router = APIRouter(prefix="/survey", tags=["Survey"])
 
@@ -50,8 +52,10 @@ def read_survey_with_questions(survey_id: UUID, db: Session = Depends(get_db)):
     # De nada Alex
 
 @router.post("/", response_model=SurveyResponse, status_code=status.HTTP_201_CREATED) # endpoint que crea una encuesta dado un diccionario con sus parámetros
-def create_survey(payload: SurveyCreate = Depends(SurveyCreate.as_form), db: Session = Depends(get_db)):
+def create_survey(
+    payload: SurveyCreate = Depends(SurveyCreate.as_form),
+    current_user: CurrentUserData = Depends(require_rrhh), # Dependencia de autenticación añadida
+    db: Session = Depends(get_db)
+):
     service = SurveyService(db)
     return service.create_survey(payload.model_dump())
-
-

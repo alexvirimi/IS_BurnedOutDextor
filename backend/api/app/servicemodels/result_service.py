@@ -16,6 +16,20 @@ class ResultService:
 
     def get_result_by_id(self, id: UUID):
         return self.repo.get_by_id(id)
+    
+    def get_results_by_worker(self, worker_id: UUID):
+        """
+        Obtiene todos los resultados de un trabajador específico.
+        Utilizado por trabajadores comunes para ver sus propios resultados.
+        """
+        return self.db.query(Result).filter(Result.id_worker == worker_id).all()
+    
+    def get_results_by_group(self, group_id: UUID):
+        """
+        Obtiene todos los resultados de los trabajadores de un grupo específico.
+        Utilizado por líderes para ver resultados de su grupo.
+        """
+        return self.db.query(Result).filter(Result.id_group == group_id).all()
 
     def create_result(self, data: dict): 
         #En este create se hace la validación de que existan el grupo, el trabajador, el área y la encuesta antes de crear el resultado, porque si no existen no se puede crear el resultado
@@ -44,4 +58,4 @@ class ResultService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="La encuesta no existe"
             )    
-        return self.repo.create(data)    
+        return self.repo.create(data)
