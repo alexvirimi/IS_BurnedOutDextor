@@ -1,12 +1,3 @@
-"""
-Este módulo define el modelo de base de datos para los rangos (Ranks) del sistema.
-Los rangos representan los niveles jerárquicos de los trabajadores. Cada rango tiene
-un identificador único, un nombre descriptivo y un nivel numérico que determina los
-permisos y el acceso a funcionalidades específicas del sistema. Los niveles son:
-1 (comun) - Trabajador regular con acceso limitado a sus propios datos
-2 (lider) - Líder de grupo con capacidad de gestionar su equipo
-3 (rrhh) - Personal de recursos humanos con acceso administrativo completo
-"""
 
 from __future__ import annotations
 

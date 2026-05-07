@@ -17,25 +17,24 @@ auth_scheme = APIKeyHeader(
 _active_sessions = {}
 
 def set_user_session(auth_user_id: UUID, user_data: dict):
-    """Establece una sesión activa para un usuario autenticado."""
+    #Establece una sesión activa para un usuario autenticado.
     _active_sessions[str(auth_user_id)] = user_data
 
 def get_user_session(auth_user_id: str) -> Optional[dict]:
-    """Recupera la sesión activa de un usuario."""
+    #Recupera la sesión activa de un usuario.
     return _active_sessions.get(auth_user_id)
 
 def clear_user_session(auth_user_id: UUID):
-    """Limpia la sesión de un usuario (logout)."""
+    #Limpia la sesión de un usuario (logout).
     _active_sessions.pop(str(auth_user_id), None)
 
 async def get_current_user(
     auth_user_id: str = Depends(auth_scheme),  # Usa el scheme de seguridad
     db: Session = Depends(get_db)
 ) -> CurrentUserData:
-    """
-    Dependencia que valida que el usuario esté autenticado.
-    Extrae el auth_user_id del header y verifica que tenga una sesión activa.
-    """
+    #Dependencia que valida que el usuario esté autenticado.
+    #Extrae el auth_user_id del header y verifica que tenga una sesión activa.
+    #
     
     if not auth_user_id:
         raise HTTPException(
@@ -55,7 +54,7 @@ async def get_current_user(
     return CurrentUserData(**user_session)
 
 def require_role(allowed_levels: List[int]):
-    """Factory que crea una dependencia para verificar roles específicos."""
+    #Factory que crea una dependencia para verificar roles específicos.#
     
     async def check_role(current_user: CurrentUserData = Depends(get_current_user)) -> CurrentUserData:
         if current_user.rank_level not in allowed_levels:

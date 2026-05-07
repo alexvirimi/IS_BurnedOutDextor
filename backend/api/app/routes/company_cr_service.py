@@ -1,3 +1,4 @@
+#Endpoint para la creacion y consulta de detalles de trabajadores, solo RRHH puede crear, pero cualquiera puede consultar
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db

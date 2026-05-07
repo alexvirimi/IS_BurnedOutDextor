@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import Form
 
 class AuthUserCreate(BaseModel):
-    """Esquema para la solicitud de registro."""
+    #Esquema para la solicitud de registro.#
     worker_id: UUID
     username: str
     password: str
@@ -24,7 +24,7 @@ class AuthUserCreate(BaseModel):
 
 
 class AuthUserResponse(BaseModel):
-    """Esquema para la respuesta de autenticación."""
+    #Esquema para la respuesta de autenticación.#
     id: UUID
     worker_id: UUID
     username: str
@@ -32,7 +32,7 @@ class AuthUserResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    """Esquema para la solicitud de login."""
+    #Esquema para la solicitud de login.#
     username: str
     password: str
     
@@ -46,7 +46,7 @@ class LoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    """Esquema para la respuesta de login exitoso."""
+    #Esquema para la respuesta de login exitoso.#
     worker_id: UUID
     rank_level: int
     rank_name: str
@@ -54,7 +54,7 @@ class LoginResponse(BaseModel):
 
 
 class CurrentUserData(BaseModel):
-    """Esquema que representa los datos del usuario actual autenticado."""
+    #Esquema que representa los datos del usuario actual autenticado.#
     auth_user_id: UUID
     worker_id: UUID
     username: str

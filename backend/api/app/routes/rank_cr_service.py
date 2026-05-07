@@ -1,3 +1,4 @@
+#Endpoint para la creacion y consulta de rangos, solo RRHH puede crear rangos, pero cualquiera puede consultar los rangos y sus detalles
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db

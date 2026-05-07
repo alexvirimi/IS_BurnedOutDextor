@@ -1,10 +1,3 @@
-"""
-Este módulo define el modelo de base de datos para los usuarios autenticados (AuthUser) del sistema.
-Los usuarios autenticados son la entidad que gestiona las credenciales de acceso (username y password)
-para los trabajadores. Cada registro en la tabla auth_user está vinculado a un trabajador específico
-mediante una relación de clave foránea. Este modelo es fundamental para el sistema de autenticación
-que valida credenciales y gestiona el acceso a los endpoints protegidos del sistema.
-"""
 
 from __future__ import annotations
 
@@ -27,10 +20,6 @@ if TYPE_CHECKING:
     from .workers import Worker
 
 class AuthUser(Base):
-    """
-    Modelo que representa un usuario autenticado del sistema.
-    Almacena las credenciales (username y password en texto plano como se requirió).
-    """
     __tablename__ = 'auth_user'
 
     id: Mapped[uuid.UUID] = mapped_column(

@@ -1,10 +1,5 @@
-"""
-Este módulo define todos los endpoints relacionados con autenticación del sistema.
-Proporciona rutas para registro de nuevos usuarios autenticados (register) y login de usuarios existentes.
-El endpoint POST /register crea un nuevo registro en la tabla auth_user vinculado a un trabajador existente.
-El endpoint POST /login valida credenciales y establece una sesión activa para el usuario.
-Ambos endpoints retornan información relevante en formato JSON, incluyendo detalles del rango y nivel de acceso.
-"""
+# Módulo de endpoints de autenticación del sistema.
+# Proporciona rutas para registro, login, logout y obtener datos del usuario actual.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -16,7 +11,6 @@ from app.deps.auth_deps import set_user_session, get_current_user, clear_user_se
 from app.schemas.auth_scheme import CurrentUserData
 from uuid import UUID
 
-# Crea el router para todas las rutas de autenticación
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=AuthUserResponse, status_code=status.HTTP_201_CREATED)
@@ -24,21 +18,7 @@ def register(
     payload: AuthUserCreate = Depends(AuthUserCreate.as_form),  # ✅ Form-data
     db: Session = Depends(get_db)
 ):
-    """
-    Endpoint para registrar un nuevo usuario autenticado.
-    
-    Requiere (form-data):
-        - worker_id: UUID del trabajador existente
-        - username: Nombre de usuario único
-        - password: Contraseña en texto plano
-    
-    Retorna:
-        - AuthUserResponse con id, worker_id y username del usuario creado
-    
-    Errores posibles:
-        - 400: El trabajador no existe o el username ya está en uso
-        - 409: El username ya existe en el sistema
-    """
+    # Registra un nuevo usuario autenticado en el sistema.
     # Inicializa el servicio de autenticación
     auth_service = AuthUserService(db)
     
@@ -69,20 +49,7 @@ def login(
     payload: LoginRequest = Depends(LoginRequest.as_form),  # ✅ Form-data
     db: Session = Depends(get_db)
 ):
-    """
-    Endpoint para autenticar un usuario y establecer una sesión.
-    
-    Requiere (form-data):
-        - username: Nombre de usuario registrado
-        - password: Contraseña en texto plano
-    
-    Retorna:
-        - LoginResponse con worker_id, rank_level, rank_name y auth_user_id
-        - El header 'auth_user_id' debe ser incluido en futuras solicitudes
-    
-    Errores posibles:
-        - 401: Usuario no encontrado o contraseña incorrecta
-    """
+    # Autentica un usuario y establece una sesión activa.
     # Inicializa el servicio de autenticación
     auth_service = AuthUserService(db)
     
@@ -118,18 +85,7 @@ def logout(
     current_user: CurrentUserData = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Endpoint para cerrar la sesión del usuario autenticado.
-    
-    Requiere:
-        - Header 'auth_user_id' con el ID del usuario autenticado
-    
-    Retorna:
-        - Mensaje de confirmación
-    
-    Errores posibles:
-        - 401: Usuario no autenticado
-    """
+    # Cierra la sesión del usuario autenticado.
     # Limpia la sesión del usuario
     clear_user_session(current_user.auth_user_id)
     
@@ -143,17 +99,5 @@ def logout(
 def get_current_user_info(
     current_user: CurrentUserData = Depends(get_current_user)
 ):
-    """
-    Endpoint para obtener la información del usuario autenticado actualmente.
-    
-    Requiere:
-        - Header 'auth_user_id' con el ID del usuario autenticado
-    
-    Retorna:
-        - Información completa del usuario (auth_user_id, worker_id, username, rank_level, rank_name, id_group)
-    
-    Errores posibles:
-        - 401: Usuario no autenticado
-    """
-    # Retorna los datos del usuario actual
+    # Retorna la información del usuario autenticado actual.
     return current_user

@@ -1,11 +1,6 @@
-"""
-Este módulo implementa la lógica de servicios para autenticación y gestión de usuarios autenticados.
-Proporciona métodos para registrar nuevos usuarios (crear registros AuthUser), validar credenciales
-durante el login y recuperar información del usuario autenticado. El servicio actúa como intermediario
-entre las rutas de autenticación y el repositorio universal, encapsulando toda la lógica de negocio
-relacionada con autenticación. Todos los métodos operan directamente sobre la base de datos a través
-de la sesión SQLAlchemy proporcionada.
-"""
+# Módulo de servicios para autenticación y gestión de usuarios autenticados.
+# Proporciona métodos para registrar nuevos usuarios, validar credenciales durante login
+# y recuperar información del usuario autenticado.
 
 from app.controllers.cr_controller import UniversalRepository as ur
 from app.dbmodels.auth_user import AuthUser

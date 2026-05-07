@@ -1,3 +1,5 @@
+#Endpoint para la creacion y consulta de areas, las areas seran predefinidas por el documento, asi que el creation podria desaparecer para disminuir la carga
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db

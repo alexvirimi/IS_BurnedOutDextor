@@ -1,3 +1,4 @@
+#Endpont que crea y lee grupos/facciones dentro de las areas, solo RRHH puede crear grupos y asignar lideres, pero cualquiera puede consultar los grupos y sus detalles
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID

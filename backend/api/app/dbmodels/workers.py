@@ -1,12 +1,3 @@
-"""
-Este módulo define el modelo de base de datos para los trabajadores (Workers) del sistema.
-Los trabajadores son los usuarios del sistema que participan en encuestas y cuyos resultados
-se registran. Cada trabajador pertenece a un grupo, tiene un rango (nivel jerárquico) y
-una bandera que indica si ha sido marcado por alguna razón (típicamente usada por líderes
-para marcar trabajadores que necesitan atención). Este modelo mantiene la relación con
-grupos, rangos y es referenciado por resultados y respuestas de encuestas.
-"""
-
 from __future__ import annotations
 
 import uuid
