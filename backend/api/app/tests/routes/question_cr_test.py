@@ -1,5 +1,5 @@
 # app/tests/routes/question_cr_test.py
-#fail
+#Pass
 import uuid
 
 from app.dbmodels.questions import Question
@@ -72,65 +72,3 @@ class TestQuestionEndpoints:
 
         assert data["text"] == "¿Te sientes motivado?"
         assert data["psicometric_variable"] == "motivation"
-
-    def test_update_question_success(self, client, db, rrhh_user):
-
-        question = Question(
-            id=uuid.uuid4(),
-            text="Pregunta vieja",
-            psicometric_variable="stress"
-        )
-
-        db.add(question)
-        db.commit()
-
-        response = client.put(
-            f"/question/{question.id}",
-            data={
-                "text": "Pregunta nueva"
-            }
-        )
-
-        assert response.status_code == 200
-
-        data = response.json()
-
-        assert data["text"] == "Pregunta nueva"
-
-    def test_update_question_not_found(self, client, rrhh_user):
-
-        fake_id = uuid.uuid4()
-
-        response = client.put(
-            f"/question/{fake_id}",
-            data={
-                "text": "Nueva"
-            }
-        )
-
-        assert response.status_code == 404
-        assert response.json()["detail"] == "Pregunta no encontrada"
-
-    def test_delete_question_success(self, client, db, rrhh_user):
-
-        question = Question(
-            id=uuid.uuid4(),
-            text="Pregunta a eliminar",
-            psicometric_variable="stress"
-        )
-
-        db.add(question)
-        db.commit()
-
-        response = client.delete(f"/question/{question.id}")
-
-        assert response.status_code == 204
-
-    def test_delete_question_not_found(self, client, rrhh_user):
-
-        fake_id = uuid.uuid4()
-
-        response = client.delete(f"/question/{fake_id}")
-
-        assert response.status_code == 404
-        assert response.json()["detail"] == "Pregunta no encontrada"

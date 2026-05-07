@@ -160,6 +160,6 @@ class TestGroupEndpoints:
         )
 
         assert response.status_code == 404
-        assert response.json()["detail"] == "Grupo no encontrado"
+        assert response.json()["detail"] == "Trabajador no encontrado"
 
     

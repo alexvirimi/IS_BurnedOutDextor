@@ -1,5 +1,4 @@
-# app/tests/routes/auth_cr_test.py
-#pass
+
 import uuid
 
 from app.dbmodels.area import Area

@@ -1,5 +1,5 @@
 import uuid
-#fail
+#individual pass
 from app.dbmodels.ranks import Rank
 
 

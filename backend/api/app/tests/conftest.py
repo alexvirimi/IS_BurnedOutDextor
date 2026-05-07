@@ -1,4 +1,6 @@
-# app/tests/conftest.py
+#Archivo de configuracion para los test, es super importante porque crea una DB de prueba y un cliente de test para hacer las peticiones a la API. 
+#Tambien tiene fixtures para crear usuarios de prueba con diferentes roles, para la validacion de la autenticacion y autorizacion en los endpoints. 
+#Esencial para asegurar que los tests sean independientes y no afecten la DB real.
 
 import pytest
 import uuid
@@ -18,6 +20,19 @@ from app.dbmodels.auth_user import AuthUser
 from app.deps.auth_deps import require_rrhh
 from app.schemas.auth_scheme import CurrentUserData
 from app.main import app
+from app.deps.auth_deps import get_current_user
+
+
+from fastapi.testclient import TestClient
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.main import app
+from app.database import get_db
+
+from app.dbmodels.base import Base
+
 # ============================================================
 # TEST DATABASE
 # ============================================================
@@ -36,35 +51,59 @@ TestingSessionLocal = sessionmaker(
 )
 
 # ============================================================
-# OVERRIDE DB
+# CREATE TABLES ONCE
 # ============================================================
 
-def override_get_db():
+@pytest.fixture(scope="session", autouse=True)
+def prepare_database():
 
-    db = TestingSessionLocal()
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
-    try:
-        yield db
+    yield
 
-    finally:
-        db.close()
+    Base.metadata.drop_all(bind=engine)
 
-app.dependency_overrides[get_db] = override_get_db
+# ============================================================
+# DB SESSION FIXTURE
+# ============================================================
+
+@pytest.fixture(scope="function")
+def db():
+
+    connection = engine.connect()
+
+    transaction = connection.begin()
+
+    session = TestingSessionLocal(bind=connection)
+
+    yield session
+
+    session.close()
+
+    transaction.rollback()
+
+    connection.close()
 
 # ============================================================
 # CLIENT FIXTURE
 # ============================================================
 
 @pytest.fixture(scope="function")
-def client():
+def client(db):
 
-    Base.metadata.create_all(bind=engine)
+    def override_get_db():
+        try:
+            yield db
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
 
     with TestClient(app) as c:
         yield c
 
-    Base.metadata.drop_all(bind=engine)
-
+    app.dependency_overrides.clear()
 # ============================================================
 # DB FIXTURE
 # ============================================================
@@ -89,20 +128,17 @@ def db():
 @pytest.fixture
 def rrhh_user(db):
 
-    # Crear rank RRHH
     rank = Rank(
         id=uuid.uuid4(),
         rank_name="rrhh",
         level=3
     )
 
-    # Crear área
     area = Area(
         id=uuid.uuid4(),
         name="RRHH"
     )
 
-    # Crear grupo
     group = Group(
         id=uuid.uuid4(),
         name="RRHH Team",
@@ -110,7 +146,6 @@ def rrhh_user(db):
         id_leader=None
     )
 
-    # Crear worker RRHH
     worker = Worker(
         id=uuid.uuid4(),
         name="Admin",
@@ -122,7 +157,6 @@ def rrhh_user(db):
         flag=False
     )
 
-    # Crear auth user
     auth_user = AuthUser(
         id=uuid.uuid4(),
         worker_id=worker.id,
@@ -131,7 +165,7 @@ def rrhh_user(db):
     )
 
     db.add_all([rank, area, group, worker, auth_user])
-    db.commit()
+    db.flush()
 
     current_user = CurrentUserData(
         auth_user_id=auth_user.id,
@@ -142,8 +176,66 @@ def rrhh_user(db):
         id_group=group.id
     )
 
-    # Override auth dependency
-    app.dependency_overrides[require_rrhh] = lambda: current_user
+    from app.deps.auth_deps import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: current_user
+
+    yield current_user
+
+    app.dependency_overrides.clear()
+    
+@pytest.fixture
+def leader_user(db):
+
+    rank = Rank(
+        id=uuid.uuid4(),
+        rank_name="lider",
+        level=2
+    )
+
+    area = Area(
+        id=uuid.uuid4(),
+        name="TI"
+    )
+
+    group = Group(
+        id=uuid.uuid4(),
+        name="Backend",
+        id_area=area.id,
+        id_leader=None
+    )
+
+    worker = Worker(
+        id=uuid.uuid4(),
+        name="Leader",
+        last_names="Test",
+        age=30,
+        gender="M",
+        id_group=group.id,
+        id_rank=rank.id,
+        flag=False
+    )
+
+    auth_user = AuthUser(
+        id=uuid.uuid4(),
+        worker_id=worker.id,
+        username="leader",
+        password="1234"
+    )
+
+    db.add_all([rank, area, group, worker, auth_user])
+    db.commit()
+
+    current_user = CurrentUserData(
+        auth_user_id=auth_user.id,
+        worker_id=worker.id,
+        username="leader",
+        rank_level=2,
+        rank_name="lider",
+        id_group=group.id
+    )
+
+    app.dependency_overrides[get_current_user] = lambda: current_user
 
     yield current_user
 
