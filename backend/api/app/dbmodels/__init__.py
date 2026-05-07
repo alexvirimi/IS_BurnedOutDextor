@@ -9,6 +9,7 @@ from .question_surveys import QuestionSurveys
 from .answer import Answer
 from .area import Area
 from .result import Result
+from .auth_user import AuthUser
 
 __all__ = [
     "Base",
@@ -23,4 +24,5 @@ __all__ = [
     "Answer",
     "Area",
     "Result",
+    "AuthUser",
 ]

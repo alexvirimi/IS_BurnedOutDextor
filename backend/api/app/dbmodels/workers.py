@@ -6,7 +6,8 @@ from sqlalchemy import (
     String,
     Integer,
     ForeignKey,
-    UUID
+    UUID,
+    Boolean
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -34,7 +35,9 @@ class Worker(Base):
     name: Mapped[str] = mapped_column(String(100))
     last_names: Mapped[str] = mapped_column(String(150))
     age: Mapped[int] = mapped_column(Integer)
-    gender: Mapped[str] = mapped_column(String(20))  
+    gender: Mapped[str] = mapped_column(String(20))
+    # Bandera para marcar trabajadores (usada por líderes)
+    flag: Mapped[bool] = mapped_column(Boolean, default=False)
 
     id_group: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), 

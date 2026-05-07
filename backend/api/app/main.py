@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-
+from fastapi.security import APIKeyHeader
 from app.database import engine
 from app.dbmodels.base import Base
 from app.routes.area_cr_service import router as area_router
@@ -17,7 +17,13 @@ from app.routes.rank_cr_service import router as rank_router
 from app.routes.result_cr_service import router as result_router
 from app.routes.surveys_cr_service import router as survey_router
 from app.routes.workers_cr_service import router as worker_router
+from app.routes.auth_service import router as auth_router
 
+auth_scheme = APIKeyHeader(
+    name="auth-user-id",
+    description="ID del usuario autenticado (obtenido del /login)",
+    auto_error=False 
+)
 # Inicializa la aplicación FastAPI
 app = FastAPI(
     title="BurnedOutDextor API",
@@ -26,13 +32,15 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+        swagger_ui_init_oauth={
+        "usePkceWithAuthorizationCodeGrant": True,}
 )
 
 origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,6 +67,7 @@ app.include_router(rank_router)
 app.include_router(result_router)
 app.include_router(survey_router)
 app.include_router(worker_router)
+app.include_router(auth_router)
 
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")

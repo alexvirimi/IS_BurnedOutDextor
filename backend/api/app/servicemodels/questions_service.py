@@ -1,33 +1,40 @@
+# Servicio para gestionar operaciones de preguntas.
+
 from app.controllers.crud_controller import UniversalRepository as ur
 from app.dbmodels import Question, QuestionSurveys, Surveys
-from sqlalchemy.orm import Session 
+from sqlalchemy.orm import Session
 from uuid import UUID
 
-# Tendrá CRUD completo, sin embargo será solo C+R por ahora.
 class QuestionService:
+    # CRUD completo para preguntas de encuestas
     def __init__(self, db: Session) -> None:
-        self.repo = ur(Question, db)                # modelo + sesión
+        self.repo = ur(Question, db)
         self.db = db
         
     def get_questions(self):
-        return self.repo.get_all()                  # obtiene todas las preguntas que existen
+        # Obtener todas las preguntas
+        return self.repo.get_all()
     
     def get_question(self, id: UUID):
-        return self.repo.get_by_id(id)              # obtiene todos los detalles de una pregunta dada su UUID
+        # Obtener pregunta por ID
+        return self.repo.get_by_id(id)
     
-    def create_question(self, data: dict):          # crea una pregunta dados todos sus parámetros
+    def create_question(self, data: dict):
+        # Crear nueva pregunta
         return self.repo.create(data)
     
-    def update_question(self, id: UUID, data: dict):  # actualiza una pregunta dada su UUID y los datos a actualizar
+    def update_question(self, id: UUID, data: dict):
+        # Actualizar pregunta existente
         return self.repo.update(id, data)
     
-    def delete_question(self, id: UUID):             # elimina una pregunta dada su UUID
+    def delete_question(self, id: UUID):
+        # Eliminar pregunta
         return self.repo.delete_by_id(id)
     
-    def get_surveys_by_question(self, id: UUID):    # obtiene todas las encuestas relacionadas a una pregunta
-        # Hace una query que trae todas las encuestas asociadas a esta pregunta a través de la tabla question_surveys
+    def get_surveys_by_question(self, id: UUID):
+        # Obtener encuestas asociadas a una pregunta
         surveys = self.db.query(Surveys).join(
-            QuestionSurveys, 
+            QuestionSurveys,
             Surveys.id == QuestionSurveys.id_survey
         ).filter(
             QuestionSurveys.id_question == id
