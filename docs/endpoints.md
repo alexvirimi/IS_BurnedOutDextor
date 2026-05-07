@@ -29,7 +29,7 @@ Create + Read
 
 | Método | Endpoint             | Descripción                                      | Parámetros  |
 | ------ | -------------------- | ------------------------------------------------ | ----------- |
-| `GET`  | /answers/            | Obtiene todas las respuestas registradas         |             |
+| `GET`  | /answers/            | Obtiene todas las respuestas registradas         | -           |
 | `POST` | /answers/            | Registra una respuesta individual de encuesta    | -           |
 | `GET`  | /answers/{answer_id} | Obtiene los datos de una respuesta en particular | `answer_id` |
 
