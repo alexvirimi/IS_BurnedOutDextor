@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Python
 __pycache__/
 *.pyc
@@ -50,10 +50,9 @@ venv/
 # macOS
 .DS_Store
 backend/api/RELACIONES.md
->>>>>>> a691221 (actualization of main branch)
-=======
+
 
 init_db.py
 app/config.py
 test.db
->>>>>>> 8ed290d5c685bdfc4c135afc3a240b8b526cc204
+
