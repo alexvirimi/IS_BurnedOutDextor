@@ -25,6 +25,7 @@ venv/
 # Markdown (documentación de prueba - archivos creados por el asistente)
 # Todos los MDs de documentación están en /temp-docs/ que está ignorado
 temp-docs/
+<<<<<<< HEAD
 =======
 # Python
 __pycache__/
@@ -50,3 +51,9 @@ venv/
 .DS_Store
 backend/api/RELACIONES.md
 >>>>>>> a691221 (actualization of main branch)
+=======
+
+init_db.py
+app/config.py
+test.db
+>>>>>>> 8ed290d5c685bdfc4c135afc3a240b8b526cc204

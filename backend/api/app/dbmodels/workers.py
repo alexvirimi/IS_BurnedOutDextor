@@ -34,7 +34,7 @@ class Worker(Base):
     name: Mapped[str] = mapped_column(String(100))
     last_names: Mapped[str] = mapped_column(String(150))
     age: Mapped[int] = mapped_column(Integer)
-    gender: Mapped[str] = mapped_column(String(20))  # Demographics for survey analysis
+    gender: Mapped[str] = mapped_column(String(20))  
 
     id_group: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), 

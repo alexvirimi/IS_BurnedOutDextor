@@ -15,9 +15,9 @@ El modelo mezcla variables heterogéneas:
 
 El árbol de decisiones maneja naturalmente estos tipos de variables, lo que reduce la complejidad de procesamiento y la necesidad de modelos avanzados.
 
-Para más información respecto a los parámetros de entrada de la IA, véase [Estructura de datos para la IA](AI_datastructure).
+Para más información respecto a los parámetros de entrada de la IA, véase [Estructura de datos para la IA](AI_datastructure.md).
 # Bajo costo computacional (restricción) y flujo de datos
-La propuesta de solución debe operar en un entorno de bajo costo (véanse [Requerimientos](requirements)), en ese sentido, el árbol de decisiones permite un entrenamiento rápido sin uso de GPU
+La propuesta de solución debe operar en un entorno de bajo costo (véanse [Requerimientos](requirements.md)), en ese sentido, el árbol de decisiones permite un entrenamiento rápido sin uso de GPU
 
 ## Sobre los datasets a usar
 De momento se usarán datos simulados para el entrenamiento, por lo que no existe un histórico real robusto. Los modelos complejos (deep learning) sobreajustan y requieren grandes volúmenes de datos, mientras que el árbol sigue manteniendo la ventaja por emplear reglas lógicas simples pero útiles.

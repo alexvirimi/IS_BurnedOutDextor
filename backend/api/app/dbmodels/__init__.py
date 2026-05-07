@@ -2,7 +2,6 @@ from .base import Base
 from .workers import Worker
 from .groups import Group
 from .ranks import Rank
-from .identity_mapping import IdentityMapping
 from .company import Company
 from .surveys import Surveys
 from .questions import Question
