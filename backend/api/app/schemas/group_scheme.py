@@ -1,14 +1,16 @@
-from typing import Optional
+# Esquemas para gestionar grupos de trabajo.
 
+from typing import Optional
 from pydantic import BaseModel, field_validator
 from uuid import UUID
 from fastapi import Form
-class GroupCreate (BaseModel):
+
+class GroupCreate(BaseModel):
     name:str
     id_area: UUID
     id_leader: Optional[UUID] = None
     @classmethod
-    def as_form (cls, name: str = Form(...), id_area: UUID = Form(...), id_leader: Optional[UUID] = Form(None)):
+    def as_form(cls, name: str = Form(...), id_area: UUID = Form(...), id_leader: Optional[UUID] = Form(None)):
         return cls(name=name, id_area=id_area, id_leader=id_leader)
     
 class GroupUpdate(BaseModel):
@@ -19,14 +21,15 @@ class GroupUpdate(BaseModel):
     def as_form(cls, name: Optional[str] = Form(None), id_area: Optional[UUID] = Form(None), id_leader: Optional[UUID] = Form(None)):
         return cls(name=name, id_area=id_area, id_leader=id_leader)
 
-# Para asignar/cambiar líder
 class GroupAssignLeader(BaseModel):
+    # Asignar o cambiar líder de grupo
     id_leader: UUID
     @classmethod
     def as_form(cls, id_leader: UUID = Form(...)):        
         return cls(id_leader=id_leader)
     
 class GroupResponse(BaseModel):
+    # Respuesta con información de grupo
     id: UUID
     name: str
     id_area: UUID

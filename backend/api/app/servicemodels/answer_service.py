@@ -1,3 +1,5 @@
+# Servicio para gestionar operaciones de respuestas de encuestas.
+
 from app.controllers.cr_controller import UniversalRepository as ur
 from app.dbmodels import Answer
 from sqlalchemy.orm import Session
@@ -5,7 +7,6 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from app.dbmodels import Group, Worker, Area, QuestionSurveys
 
-#En la tabla area solo se pueden realizar las lecturas de la misma.
 class AnswerService:
     def __init__(self, db: Session):
         self.repo = ur(Answer, db)
@@ -44,7 +45,8 @@ class AnswerService:
             )    
         return self.repo.create(data)    
     
-    def create_answers_bulk(self, answers: list): #funcion que recibe una lista de respuetas y las mete en la db para que se puedan responder todas a la vez, en vez de una por una.
+    def create_answers_bulk(self, answers: list):
+        # Crear múltiples respuestas en lote
         results = []
         for answer in answers:
             created = self.create_answer(answer.model_dump())

@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import uuid
@@ -30,6 +31,9 @@ class Rank(Base):
         default=uuid.uuid4,
         primary_key=True
     )
-    rank_name: Mapped[str] = mapped_column (String(100))
+    
+    rank_name: Mapped[str] = mapped_column(String(100))
+    # Nivel numérico para control de acceso: 1=común, 2=líder, 3=RRHH
+    level: Mapped[int] = mapped_column(Integer)
 
     workers: Mapped[list[Worker]]=relationship(back_populates='rank')
