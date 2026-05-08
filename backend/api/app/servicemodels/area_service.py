@@ -3,6 +3,7 @@ from app.dbmodels import Area
 from sqlalchemy.orm import Session
 from uuid import UUID
 
+
 #En la tabla area solo se pueden realizar las lecturas de la misma.
 class AreaService:
     def __init__(self, db: Session):
@@ -16,3 +17,4 @@ class AreaService:
 
     def create_area(self, data: dict):
         return self.repo.create(data)
+    

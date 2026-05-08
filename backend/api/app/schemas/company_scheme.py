@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from uuid import UUID
 from datetime import date 
 
+
 class CompanyCreate (BaseModel):                # Crea los detalles empresariales de un empleado
     id_worker: UUID
     assigned_tasks: int

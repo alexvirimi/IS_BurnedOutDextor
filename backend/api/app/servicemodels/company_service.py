@@ -3,6 +3,7 @@ from app.dbmodels import Company
 from sqlalchemy.orm import Session 
 from uuid import UUID
 
+
 # En la tabla area solo se pueden realizar las lecturas de la misma + Create.
 class CompanyService:
     def __init__(self, db: Session) -> None:
@@ -16,3 +17,4 @@ class CompanyService:
     
     def create_worker_info(self, data: dict):
         return self.repo.create(data)           # crea los detalles de un trabajador que se pasan en forma de diccionario
+    

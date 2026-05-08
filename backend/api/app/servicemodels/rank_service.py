@@ -3,6 +3,7 @@ from app.dbmodels import Rank
 from sqlalchemy.orm import Session 
 from uuid import UUID
 
+
 # En la tabla area solo se pueden realizar las lecturas de la misma + Create.
 class RankService:
     def __init__(self, db: Session) -> None:

@@ -32,7 +32,7 @@ def prepare_dataset(
 
     # paths
     if folder_path is None:
-        ROOT = Path(__file__).resolve().parents[0]
+        ROOT = Path(__file__).resolve().parents[1]
         folder_path = ROOT / "data" / "training_data"
     folder_path = Path(folder_path)
     print(f"Loading data from: {folder_path}")

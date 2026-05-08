@@ -62,7 +62,7 @@ CLASS_ORDER = {
     "Alto"     : 4,
 }
 
-#  2. Carga de Datosaa
+#  2. Carga de Datos
 def load_dataset(csv_path: str) -> tuple[pd.DataFrame, pd.Series, list]:
     """
     Carga el dataset desde CSV.
@@ -327,7 +327,7 @@ def main():
     # Split inicial (estratificado)
     X_arr = X.values
     y_arr = y.values
-    X_train, X_test, y_init, y_test_init = train_test_split(
+    X_train, X_test, y_init, y_test = train_test_split(
         X_arr, y_arr,
         test_size=CONFIG["test_size"],
         random_state=CONFIG["random_state"],
@@ -358,6 +358,7 @@ def main():
     # Guardar modelo
     if CONFIG["save_model"]:
         save_artifacts(pipeline, class_names, le, Path(CONFIG["output_dir"]))
+        joblib.dump((X_test, y_test), Path(CONFIG["output_dir"]) / "burnout_test_set.pkl")
 
     logger.info(" Entrenamiento finalizado")
     return pipeline
