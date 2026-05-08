@@ -24,26 +24,6 @@ def read_workers(db: Session = Depends(get_db)):
     # Endpoint para obtener todos los trabajadores. No requiere autenticación.
     service = WorkerService(db)
     return service.get_workers()
-
-@router.get("/{worker_id}", response_model=WorkerResponse, status_code=status.HTTP_200_OK)
-def read_worker_info(worker_id: UUID, db: Session = Depends(get_db)):
-    # Endpoint que obtiene la información de un trabajador dada su UUID. No requiere autenticación.
-    service = WorkerService(db)
-    worker = service.get_worker(worker_id)
-    if not worker:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trabajador no encontrado")
-    return worker
-
-@router.post("/", response_model=WorkerResponse, status_code=status.HTTP_201_CREATED)
-def create_worker_info(
-    payload: WorkerCreate = Depends(WorkerCreate.as_form),
-    current_user: CurrentUserData = Depends(require_rrhh),
-    db: Session = Depends(get_db)
-):
-    # Endpoint que crea un trabajador. Solo RRHH puede crear trabajadores.
-    service = WorkerService(db)
-    return service.create_worker(payload.model_dump())
-
 @router.get("/{worker_id}/details", response_model=WorkerDetailResponse, status_code=status.HTTP_200_OK)
 def read_worker_details(worker_id: UUID, db: Session = Depends(get_db)):
     # Endpoint que obtiene toda la información de un trabajador incluyendo rango y grupo. No requiere autenticación.
@@ -105,3 +85,24 @@ def update_worker_flag(
     # Actualiza el flag
     updated_worker = service.update_worker_flag(worker_id, payload.flag)
     return updated_worker
+
+
+
+@router.post("/", response_model=WorkerResponse, status_code=status.HTTP_201_CREATED)
+def create_worker_info(
+    payload: WorkerCreate = Depends(WorkerCreate.as_form),
+    current_user: CurrentUserData = Depends(require_rrhh),
+    db: Session = Depends(get_db)
+):
+    # Endpoint que crea un trabajador. Solo RRHH puede crear trabajadores.
+    service = WorkerService(db)
+    return service.create_worker(payload.model_dump())
+
+@router.get("/{worker_id}", response_model=WorkerResponse, status_code=status.HTTP_200_OK)
+def read_worker_info(worker_id: UUID, db: Session = Depends(get_db)):
+    # Endpoint que obtiene la información de un trabajador dada su UUID. No requiere autenticación.
+    service = WorkerService(db)
+    worker = service.get_worker(worker_id)
+    if not worker:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trabajador no encontrado")
+    return worker

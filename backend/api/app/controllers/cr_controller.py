@@ -14,7 +14,7 @@ class UniversalRepository:
         return self.db.query(self.model).all()
 
     def get_by_id(self, obj_id: Any) -> Optional[Any]:
-        return self.db.query(self.model).get(obj_id)
+        return self.db.get(self.model, obj_id)
 
     def create(self, data: dict) -> Any:
         obj = self.model(**data)
