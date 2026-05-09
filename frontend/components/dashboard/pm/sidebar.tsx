@@ -17,7 +17,6 @@ interface PMSidebarProps {
   selectedGroup: GroupType;
   onViewChange: (view: PMView, group?: GroupType) => void;
   userName: string;
-  userImage: string;
 }
 
 export function PMSidebar({
@@ -25,13 +24,12 @@ export function PMSidebar({
   selectedGroup,
   onViewChange,
   userName,
-  userImage,
 }: PMSidebarProps) {
   const isHistoricosExpanded = activeView === "historicos";
   const isFlaggearExpanded = activeView === "flaggear";
 
   return (
-    <SidebarShell userName={userName} userImage={userImage}>
+    <SidebarShell userName={userName}>
       {/* Mi Progreso */}
       <SidebarNavButton
         label="Mi Progreso"

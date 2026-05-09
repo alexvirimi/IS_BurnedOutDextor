@@ -6,6 +6,7 @@ import { PMEncuestasView } from "./views/encuestas-view";
 import { PMProgresoView } from "./views/progreso-view";
 import { PMHistoricosView } from "./views/historicos-view";
 import { PMFlaggearView } from "./views/flaggear-view";
+import { useWorkerName } from "@/hooks/useWorkerName";
 
 const USER_IMAGE =
   "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=256&h=256&fit=crop&crop=face";
@@ -13,6 +14,7 @@ const USER_IMAGE =
 export function PMDashboard() {
   const [activeView, setActiveView] = useState<PMView>("encuestas");
   const [selectedGroup, setSelectedGroup] = useState<GroupType>(null);
+  const { fullName, isLoading } = useWorkerName();
 
   const handleViewChange = (view: PMView, group?: GroupType) => {
     setActiveView(view);
@@ -22,7 +24,7 @@ export function PMDashboard() {
   const renderView = () => {
     switch (activeView) {
       case "encuestas":
-        return <PMEncuestasView userName="<USUARIO>" />;
+        return <PMEncuestasView userName={isLoading ? "..." : fullName} />;
       case "progreso":
         return <PMProgresoView />;
       case "historicos":
@@ -30,7 +32,7 @@ export function PMDashboard() {
       case "flaggear":
         return <PMFlaggearView group={selectedGroup} />;
       default:
-        return <PMEncuestasView userName="<USUARIO>" />;
+        return <PMEncuestasView userName={isLoading ? "..." : fullName} />;
     }
   };
 
@@ -40,8 +42,7 @@ export function PMDashboard() {
         activeView={activeView}
         selectedGroup={selectedGroup}
         onViewChange={handleViewChange}
-        userName="Nombre Apellido Apellido"
-        userImage={USER_IMAGE}
+        userName={isLoading ? "..." : fullName}
       />
       <main className="ml-72 flex-1 min-h-screen overflow-y-auto">
         {renderView()}
