@@ -45,11 +45,10 @@ FEATURES = [
     # Datos laborales
     "assigned_tasks", "completed_tasks", "absences",
     "employee_calls", "completion_rate", "seniority_years",
-    "rank_index", "group_index",
     # Datos personales
     "age", "gender_enc",
     # Modalidad y sede
-    "work_mode_enc", "location_enc",
+    "worker_type_enc", "location_enc",
     # Encuesta MBI-GS
     "avg_agotamiento", "avg_despersonalizacion", "eficacia_invertida"
 ]

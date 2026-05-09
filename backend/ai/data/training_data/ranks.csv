@@ -1,9 +1,9 @@
-id,rank_name
-5d47e1aa-e241-4883-85a7-27198ed9a0aa,Director
-71aa439b-9c20-4101-8f6a-907328950829,Gerente
-ad177d80-fa61-4dbc-9a5a-b8409d9773dd,Líder de Equipo
-6f28c950-c4b3-4a09-b6fa-86eff39dbc8b,Trabajador Senior
-6f548c74-5817-4ea7-8ff4-eae597ec6542,Trabajador
-a7ea8107-f687-4d1b-a6db-c6092e0e1540,Trabajador Junior
-8ba0520a-35a1-4f45-bf55-bc2c6c13663d,Practicante
-8e950693-3c02-450e-b2e4-559b263b10e5,Recursos Humanos
+id,rank_name,level
+1ecbfe8f-5dfd-47a0-b72c-1ec878091976,Director,1
+e9156d22-3296-4131-8de8-fe29b70b7dfc,Gerente,2
+53eda662-3990-4b48-bf4f-a4c9900f0bdd,Líder de Equipo,3
+ea0dea20-3f2e-4c6d-8030-c9b1e1da2e35,Trabajador Senior,4
+5d0af688-3630-4e9b-86a2-6ef2070596b2,Trabajador,5
+b53732a5-5020-4a43-94e6-5bbbd61e6aea,Trabajador Junior,6
+d1628a95-5c0e-46f8-ad28-711d43355f81,Practicante,7
+7da69ebc-e02f-4b5e-8ef7-baa95de46232,Recursos Humanos,3

@@ -3,29 +3,25 @@ from uuid import UUID
 
 
 class WorkerInput(BaseModel):
-    # Identificador (worker.id)
+    # Identificador único para trazabilidad entre servicios (worker.id)
     worker_id: UUID
 
-    # Datos laborales (tabla: company)
-    # Field (...) indica que el campo es obligatorio, ge=0 para validar que no sea negativo
+    # Datos laborales
     assigned_tasks: int = Field(..., ge=0)
     completed_tasks: int = Field(..., ge=0)
     absences: int = Field(..., ge=0)
     employee_calls: int = Field(..., ge=0)
-    completion_rate: float = Field(..., ge=0)  # completed/assigned (calculado)
+    # completed/assigned (calculado)
+    completion_rate: float = Field(..., ge=0.0, le=1.0)
     # (today - start_date).days / 365 (calculado)
     seniority_years: float = Field(..., ge=0)
 
-    # Rango y grupo (tablas: rank, group)
-    rank_index:  UUID
-    group_index: UUID
-
     # Datos personales (tabla: workers)
-    age: int = Field(..., ge=18, le=100)  # rango de edad laboral
+    age: int = Field(..., ge=18, le=70)  # rango de edad laboral
     gender_enc: int = Field(..., ge=0)  # worker.gender codificado
 
     # Modalidad y sede (tabla:company)
-    work_mode_enc: int = Field(..., ge=0)  # company.work_type codificado
+    worker_type_enc: int = Field(..., ge=0)  # company.work_type codificado
     location_enc: int = Field(..., ge=0)  # company.location codificado
 
     # Encuesta MBI-GS (tabla: question + answer)
@@ -33,7 +29,7 @@ class WorkerInput(BaseModel):
     avg_agotamiento: float = Field(..., ge=1.0, le=5.0)
     # promedio de respuestas a preguntas de despersonalización (calculado)
     avg_despersonalizacion: float = Field(..., ge=1.0, le=5.0)
-    # 6 - promedio de respuestas a preguntas de eficacia
+    # 6 - promedio de respuestas a preguntas de eficacia (calculado)
     eficacia_invertida: float = Field(..., ge=1.0, le=5.0)
 
     @model_validator(mode="after")
@@ -44,8 +40,9 @@ class WorkerInput(BaseModel):
 
 
 class BurnoutPredictionResult(BaseModel):
-    worker_id:           str
-    burnout_score:       float  # probabilidad de burnout (0.0 - 1.0)
-    burnout_class:       str   # "Muy Bajo" | "Bajo" | "Medio" | "Moderado" | "Alto"
-    burnout_confidence:  float  # probabilidad de burnout (0.0 - 1.0)
-    probabilities:       dict  # {"Muy Bajo": 0.03, "Bajo": 0.08, ...}
+    worker_id: UUID
+    burnout_class: str  # "Muy Bajo" | "Bajo" | "Medio" | "Moderado" | "Alto"
+    # Probabilidad de la clase predicha (0.0 - 1.0)
+    burnout_score: float = Field(..., ge=0.0, le=1.0)
+    # Mapa completo: {"Alto": 0.85, "Medio": 0.10, ...}
+    probabilities: dict[str, float]

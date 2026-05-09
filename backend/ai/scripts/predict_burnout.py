@@ -50,17 +50,17 @@ FEATURES = [
     # Datos laborales
     "assigned_tasks", "completed_tasks", "absences",
     "employee_calls", "completion_rate", "seniority_years",
-    "rank_index", "group_index",
     # Datos personales
     "age", "gender_enc",
     # Modalidad y sede
-    "work_mode_enc", "location_enc",
+    "worker_type_enc", "location_enc",
     # Encuesta MBI-GS
-    "avg_agotamiento", "avg_despersonalizacion", "eficacia_invertida",
+    "avg_agotamiento", "avg_despersonalizacion", "eficacia_invertida"
 ]
 
+# Carga de artefactos
 
-# Carga de artefactos 
+
 def load_artifacts(models_dir: Path) -> tuple:
     """
     Carga el pipeline entrenado y las etiquetas de clase.
@@ -75,8 +75,8 @@ def load_artifacts(models_dir: Path) -> tuple:
         FileNotFoundError: si alguno de los .pkl no existe.
     """
     pipeline_path = models_dir / "burnout_pipeline.pkl"
-    labels_path   = models_dir / "burnout_labels.pkl"
-    encoder_path  = models_dir / "burnout_encoder.pkl"
+    labels_path = models_dir / "burnout_labels.pkl"
+    encoder_path = models_dir / "burnout_encoder.pkl"
 
     for p in (pipeline_path, labels_path, encoder_path):
         if not p.exists():
@@ -85,9 +85,9 @@ def load_artifacts(models_dir: Path) -> tuple:
                 "Ejecuta train_burnout.py primero para generar los modelos."
             )
 
-    pipeline    = joblib.load(pipeline_path)
+    pipeline = joblib.load(pipeline_path)
     class_names = joblib.load(labels_path)
-    le          = joblib.load(encoder_path)
+    le = joblib.load(encoder_path)
 
     logger.info("Carga de artefactos en : %s", models_dir)
 
@@ -177,7 +177,7 @@ def predict(
         results (list[dict]): Lista de diccionarios, uno por muestra,
         con keys: burnout_risk, confidence, probabilities. 
     """
-    y_pred  = pipeline.predict(X.values)
+    y_pred = pipeline.predict(X.values)
     y_proba = pipeline.predict_proba(X.values)
 
     # DEBUG — quitar después
@@ -189,11 +189,12 @@ def predict(
 
     results = []
     for pred, proba in zip(y_pred, y_proba):
-        pred_idx = int(np.argmax(proba))          # índice de mayor probabilidad
-        cls_name = class_names[pred_idx]   
+        # índice de mayor probabilidad
+        pred_idx = int(np.argmax(proba))
+        cls_name = class_names[pred_idx]
         results.append({
-            "burnout_risk" : cls_name,
-            "confidence"   : round(float(proba[pred]), 4),
+            "burnout_risk": cls_name,
+            "confidence": round(float(proba[pred]), 4),
             "probabilities": {
                 class_names[i]: round(float(p), 4)
                 for i, p in enumerate(proba)
@@ -217,7 +218,8 @@ def predict_employee(employee: dict, models_dir: Path = MODELS_DIR) -> dict:
     """
     pipeline, class_names, le = load_artifacts(models_dir)
     X = prepare_from_dict(employee)
-    return predict(pipeline, class_names, le, X)[0] # Retorna el dict del primer (y único) empleado
+    # Retorna el dict del primer (y único) empleado
+    return predict(pipeline, class_names, le, X)[0]
 
 
 def predict_from_csv(csv_path: str | Path, models_dir: Path = MODELS_DIR) -> list[dict]:
@@ -240,11 +242,12 @@ def predict_from_csv(csv_path: str | Path, models_dir: Path = MODELS_DIR) -> lis
 
 # CLI
 if __name__ == "__main__":
-    print (MODELS_DIR)
+    print(MODELS_DIR)
     # Permite leer argumentos desde la terminal para predecir desde CSV o JSON
-    parser = argparse.ArgumentParser(description="Predictor de riesgo de burnout")
+    parser = argparse.ArgumentParser(
+        description="Predictor de riesgo de burnout")
     # Solo se puede usar alguno de los dos (CSV o JSON)
-    group  = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group(required=True)
     # Definición de parámetros y textos mostrados en --help
     group.add_argument(
         "--csv",
@@ -283,7 +286,6 @@ if __name__ == "__main__":
                     result["burnout_risk"], result["confidence"], result["probabilities"])
     else:
         employee = json.loads(args.json)
-        result   = predict_employee(employee, models_dir=args.models_dir)
+        result = predict_employee(employee, models_dir=args.models_dir)
         logger.info("Resultado → %s (conf: %.2f) | probs: %s",
                     result["burnout_risk"], result["confidence"], result["probabilities"])
-        

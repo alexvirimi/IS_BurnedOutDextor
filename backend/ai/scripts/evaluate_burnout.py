@@ -49,13 +49,12 @@ FEATURES = [
     # Datos laborales
     "assigned_tasks", "completed_tasks", "absences",
     "employee_calls", "completion_rate", "seniority_years",
-    "rank_index", "group_index",
     # Datos personales
     "age", "gender_enc",
     # Modalidad y sede
-    "work_mode_enc", "location_enc",
+    "worker_type_enc", "location_enc",
     # Encuesta MBI-GS
-    "avg_agotamiento", "avg_despersonalizacion", "eficacia_invertida",
+    "avg_agotamiento", "avg_despersonalizacion", "eficacia_invertida"
 ]
 
 # Metas de desempeño (SLAs)
@@ -247,8 +246,10 @@ def compute_additional_ml_metrics(
     y_pred_labels = metrics["y_pred_labels"]
 
     # Macro metrics
-    macro_precision = precision_score(y_enc, y_pred, average="macro", zero_division=0)
-    macro_recall = recall_score(y_enc, y_pred, average="macro", zero_division=0)
+    macro_precision = precision_score(
+        y_enc, y_pred, average="macro", zero_division=0)
+    macro_recall = recall_score(
+        y_enc, y_pred, average="macro", zero_division=0)
     macro_f1 = f1_score(y_enc, y_pred, average="macro", zero_division=0)
 
     # Métricas por clase
@@ -289,8 +290,8 @@ def main():
         help="Ruta al archivo CSV con los datos de evaluación.",
     )
     parser.add_argument(
-        "--test-pkl", 
-        type=Path, 
+        "--test-pkl",
+        type=Path,
         help="Ruta al archivo .pkl del set de prueba (X_test, y_test)."
     )
     parser.add_argument(
@@ -317,23 +318,26 @@ def main():
             # Intentar cargar el test set por defecto si no se provee nada
             default_test_pkl = Path(args.models_dir) / "burnout_test_set.pkl"
             if default_test_pkl.exists():
-                logger.info(f"Usando set de prueba por defecto: {default_test_pkl}")
+                logger.info(
+                    f"Usando set de prueba por defecto: {default_test_pkl}")
                 X_eval, y_eval = joblib.load(default_test_pkl)
                 y_raw = pd.Series(le.inverse_transform(y_eval), name=TARGET)
             else:
-                raise ValueError("Debes proporcionar --csv o --test-pkl, o asegurar que data/models/burnout_test_set.pkl exista.")
+                raise ValueError(
+                    "Debes proporcionar --csv o --test-pkl, o asegurar que data/models/burnout_test_set.pkl exista.")
 
         # 3. Calcular métricas
         metrics = compute_metrics(pipeline, class_names, X_eval, y_eval, y_raw)
-        additional = compute_additional_ml_metrics(metrics, class_names, y_eval, y_raw)
-        
+        additional = compute_additional_ml_metrics(
+            metrics, class_names, y_eval, y_raw)
+
         # Log métricas adicionales
         logger.info("Macro Precision : %.4f", additional["macro_precision"])
         logger.info("Macro Recall    : %.4f", additional["macro_recall"])
         logger.info("Macro F1        : %.4f", additional["macro_f1"])
 
         # Verificar SLA
-        if metrics["precision"] * 100 < SLA_PRECISION_PCT: 
+        if metrics["precision"] * 100 < SLA_PRECISION_PCT:
             logger.warning(
                 "¡ADVERTENCIA! La precision (%.2f%%) está por debajo del SLA (%.2f%%).",
                 metrics["precision"] * 100, SLA_PRECISION_PCT
