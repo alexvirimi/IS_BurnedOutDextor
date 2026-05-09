@@ -14,13 +14,15 @@ Métricas generadas:
 Uso CLI:
   # Evaluación completa
   python -m scripts.evaluate_burnout --csv data/training/training_dataset.csv
+
+  # Evaluación con set de prueba guardado (X_test, y_test)
+  python -m scripts.evaluate_burnout --test-pkl ai-service/models/burnout_test_set.pkl
 """
 
 import argparse
 import logging
 import warnings
 from pathlib import Path
-
 import joblib
 import numpy as np
 import pandas as pd
@@ -38,7 +40,8 @@ logging.basicConfig(
 )
 
 # Configuración
-MODELS_DIR = Path(__file__).resolve().parent.parent / "ai-service" / "models"
+MODELS_DIR = Path(__file__).resolve().parent.parent.parent / \
+    "ai-service" / "models"
 
 TARGET = "burnout_risk"
 
@@ -55,14 +58,6 @@ FEATURES = [
     "avg_agotamiento", "avg_despersonalizacion", "eficacia_invertida",
 ]
 
-CLASS_ORDER = {
-    "Muy Bajo": 0,
-    "Bajo": 1,
-    "Medio": 2,
-    "Moderado": 3,
-    "Alto": 4,
-}
-
 # Metas de desempeño (SLAs)
 SLA_PRECISION_PCT = 90.0    # % mínimo de aciertos
 
@@ -77,15 +72,16 @@ def load_artifacts(models_dir: Path) -> tuple:
         models_dir: carpeta donde están los .pkl generados por train_burnout.py.
 
     Returns:
-        pipeline, class_names
+        pipeline, class_names, le
 
     Raises:
         FileNotFoundError: si alguno de los .pkl no existe.
     """
     pipeline_path = models_dir / "burnout_pipeline.pkl"
     labels_path = models_dir / "burnout_labels.pkl"
+    encoder_path = models_dir / "burnout_encoder.pkl"
 
-    for p in (pipeline_path, labels_path):
+    for p in (pipeline_path, labels_path, encoder_path):
         if not p.exists():
             raise FileNotFoundError(
                 f"Artefacto no encontrado: {p}\n"
@@ -94,13 +90,14 @@ def load_artifacts(models_dir: Path) -> tuple:
 
     pipeline = joblib.load(pipeline_path)
     class_names = joblib.load(labels_path)
+    le = joblib.load(encoder_path)
     logger.info("Carga de artefactos en : %s", models_dir)
 
-    return pipeline, class_names
+    return pipeline, class_names, le
 
 
 # Carga del CSV de evaluación
-def load_csv(csv_path: Path, class_names: list) -> tuple[np.ndarray, np.ndarray, pd.Series]:
+def load_csv(csv_path: Path, le) -> tuple[np.ndarray, np.ndarray]:
     """
     Carga el CSV de evaluación y encodea el target al mismo orden
     que el modelo fue entrenado.
@@ -132,30 +129,23 @@ def load_csv(csv_path: Path, class_names: list) -> tuple[np.ndarray, np.ndarray,
     if missing:
         raise ValueError(f"Columnas faltantes en el CSV: {sorted(missing)}")
 
-    # Verificar nulos en columnas requeridas
-    null_counts = df[FEATURES].isnull().sum()
-    null_cols = null_counts[null_counts > 0]
-    if not null_cols.empty:
-        error_msg = (
-            "El archivo contiene valores nulos en columnas requeridas:\n"
-            f"{null_cols.to_string()}"
-        )
-
-        logger.error(error_msg)
-        raise ValueError(error_msg)
+    # Manejo de nulos: Si no se imputa, se eliminan las filas con nulos
+    initial_rows = len(df)
+    df.dropna(subset=FEATURES + [TARGET], inplace=True)
+    if len(df) < initial_rows:
+        logger.warning(
+            f"Se eliminaron {initial_rows - len(df)} filas con valores nulos en el set de evaluación.")
 
     X_df = df[FEATURES].astype(float)
     y_raw = df[TARGET].astype(str).str.strip()
 
     # Encodear usando el mismo orden de class_names del modelo entrenado
-    class_map = {name: i for i, name in enumerate(class_names)}
-    unknown = set(y_raw.unique()) - set(class_names)
-    if unknown:
+    # Usar el LabelEncoder cargado para asegurar consistencia
+    try:
+        y_enc = le.transform(y_raw).astype(int)
+    except ValueError as e:
         raise ValueError(
-            f"Valores desconocidos en \'{TARGET}\': {unknown}\n"
-            f"Clases conocidas por el modelo: {class_names}"
-        )
-    y_enc = y_raw.map(class_map).astype(int).values
+            f"Error al codificar el target: {e}. Asegúrate de que todas las clases en el CSV de evaluación fueron vistas durante el entrenamiento.")
 
     logger.info(
         "Distribución real:\n%s",
@@ -166,8 +156,8 @@ def load_csv(csv_path: Path, class_names: list) -> tuple[np.ndarray, np.ndarray,
 
 # Cálculo de métricas
 def compute_metrics(
-    pipeline, class_names: list, X_df: pd.DataFrame,
-    y_enc: np.ndarray, y_raw: pd.Series,
+    pipeline, class_names: list, X_eval: pd.DataFrame,
+    y_eval: np.ndarray, y_raw: pd.Series,
 ) -> dict:
     """
     Calcula métricas completas de evaluación.
@@ -184,20 +174,20 @@ def compute_metrics(
         dict con accuracy, precision, recall, f1, roc_auc,
         y_pred, y_proba, y_pred_labels.
     """
-    y_pred = pipeline.predict(X_df)
-    y_proba = pipeline.predict_proba(X_df)
+    y_pred = pipeline.predict(X_eval)
+    y_proba = pipeline.predict_proba(X_eval)
 
-    acc = accuracy_score(y_enc, y_pred)
-    prec = precision_score(y_enc, y_pred, average="weighted", zero_division=0)
-    rec = recall_score(y_enc, y_pred, average="weighted", zero_division=0)
-    f1 = f1_score(y_enc, y_pred, average="weighted", zero_division=0)
+    acc = accuracy_score(y_eval, y_pred)
+    prec = precision_score(y_eval, y_pred, average="weighted", zero_division=0)
+    rec = recall_score(y_eval, y_pred, average="weighted", zero_division=0)
+    f1 = f1_score(y_eval, y_pred, average="weighted", zero_division=0)
 
     n_classes = len(class_names)
     if n_classes == 2:
-        auc = roc_auc_score(y_enc, y_proba[:, 1])
+        auc = roc_auc_score(y_eval, y_proba[:, 1])
     else:
         auc = roc_auc_score(
-            y_enc, y_proba, multi_class="ovr", average="weighted"
+            y_eval, y_proba, multi_class="ovr", average="weighted"
         )
 
     # Reporte legible con nombres de clase originales
@@ -257,26 +247,9 @@ def compute_additional_ml_metrics(
     y_pred_labels = metrics["y_pred_labels"]
 
     # Macro metrics
-    macro_precision = precision_score(
-        y_enc,
-        y_pred,
-        average="macro",
-        zero_division=0,
-    )
-
-    macro_recall = recall_score(
-        y_enc,
-        y_pred,
-        average="macro",
-        zero_division=0,
-    )
-
-    macro_f1 = f1_score(
-        y_enc,
-        y_pred,
-        average="macro",
-        zero_division=0,
-    )
+    macro_precision = precision_score(y_enc, y_pred, average="macro", zero_division=0)
+    macro_recall = recall_score(y_enc, y_pred, average="macro", zero_division=0)
+    macro_f1 = f1_score(y_enc, y_pred, average="macro", zero_division=0)
 
     # Métricas por clase
     per_class = classification_report(
@@ -288,12 +261,7 @@ def compute_additional_ml_metrics(
     )
 
     # Matriz de confusión
-    cm = confusion_matrix(
-        y_raw,
-        y_pred_labels,
-        labels=class_names,
-    )
-
+    cm = confusion_matrix(y_raw, y_pred_labels, labels=class_names)
     confusion = {
         true_label: {
             pred_label: int(cm[i][j])
@@ -306,9 +274,7 @@ def compute_additional_ml_metrics(
         "macro_precision": round(macro_precision, 4),
         "macro_recall": round(macro_recall, 4),
         "macro_f1": round(macro_f1, 4),
-
         "per_class": per_class,
-
         "confusion_matrix": confusion,
     }
 
@@ -320,8 +286,12 @@ def main():
     parser.add_argument(
         "--csv",
         type=Path,
-        required=True,
         help="Ruta al archivo CSV con los datos de evaluación.",
+    )
+    parser.add_argument(
+        "--test-pkl", 
+        type=Path, 
+        help="Ruta al archivo .pkl del set de prueba (X_test, y_test)."
     )
     parser.add_argument(
         "--models-dir",
@@ -332,22 +302,46 @@ def main():
     args = parser.parse_args()
 
     try:
-        pipeline, class_names = load_artifacts(args.models_dir)
-        X_df, y_enc, y_raw = load_csv(args.csv, class_names)
-        metrics = compute_metrics(pipeline, class_names, X_df, y_enc, y_raw)
-        additional = compute_additional_ml_metrics(
-            metrics, class_names, y_enc, y_raw)
+        # 1. Cargar modelos
+        pipeline, class_names, le = load_artifacts(args.models_dir)
 
+        # 2. Cargar datos de evaluación
+        if args.test_pkl:
+            logger.info(f"Evaluando con test set PKL: {args.test_pkl}")
+            X_eval, y_eval = joblib.load(args.test_pkl)
+            y_raw = pd.Series(le.inverse_transform(y_eval), name=TARGET)
+        elif args.csv:
+            logger.info(f"Evaluando con CSV: {args.csv}")
+            X_eval, y_eval, y_raw = load_csv(args.csv, le)
+        else:
+            # Intentar cargar el test set por defecto si no se provee nada
+            default_test_pkl = Path(args.models_dir) / "burnout_test_set.pkl"
+            if default_test_pkl.exists():
+                logger.info(f"Usando set de prueba por defecto: {default_test_pkl}")
+                X_eval, y_eval = joblib.load(default_test_pkl)
+                y_raw = pd.Series(le.inverse_transform(y_eval), name=TARGET)
+            else:
+                raise ValueError("Debes proporcionar --csv o --test-pkl, o asegurar que data/models/burnout_test_set.pkl exista.")
+
+        # 3. Calcular métricas
+        metrics = compute_metrics(pipeline, class_names, X_eval, y_eval, y_raw)
+        additional = compute_additional_ml_metrics(metrics, class_names, y_eval, y_raw)
+        
         # Log métricas adicionales
         logger.info("Macro Precision : %.4f", additional["macro_precision"])
         logger.info("Macro Recall    : %.4f", additional["macro_recall"])
         logger.info("Macro F1        : %.4f", additional["macro_f1"])
 
         # Verificar SLA
-        if metrics["accuracy"] * 100 < SLA_PRECISION_PCT:   # ← accuracy, no precision
+        if metrics["precision"] * 100 < SLA_PRECISION_PCT: 
             logger.warning(
-                "¡ADVERTENCIA! La accuracy (%.2f%%) está por debajo del SLA (%.2f%%).",
-                metrics["accuracy"] * 100, SLA_PRECISION_PCT
+                "¡ADVERTENCIA! La precision (%.2f%%) está por debajo del SLA (%.2f%%).",
+                metrics["precision"] * 100, SLA_PRECISION_PCT
+            )
+        else:
+            logger.info(
+                "SLA cumplido: precision %.2f%% >= %.2f%%",
+                metrics["precision"] * 100, SLA_PRECISION_PCT,
             )
 
     except FileNotFoundError as e:

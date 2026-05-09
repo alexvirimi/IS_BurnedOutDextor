@@ -8,7 +8,7 @@ import os
 import warnings
 from collections import Counter
 from pathlib import Path
- 
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -33,7 +33,7 @@ CONFIG = {
     "random_state": 42,
     "cv_folds": 5,                  # Cross-validation folds
     "auto_balance": True,           # Activar balanceo automático
-    "balance_strategy": "resample", # Opciones: "resample", "undersample", "weight"
+    "balance_strategy": "resample",  # Opciones: "resample", "undersample", "weight"
     "dataset": "../data/training_data/training_dataset.csv",
     "output_dir": "./backend/ai-service/models",
     "save_model": True,
@@ -55,22 +55,26 @@ FEATURES = [
 ]
 
 CLASS_ORDER = {
-    "Muy Bajo" : 0,
-    "Bajo"     : 1,
-    "Medio"    : 2,
-    "Moderado" : 3,
-    "Alto"     : 4,
+    "Muy Bajo": 0,
+    "Bajo": 1,
+    "Medio": 2,
+    "Moderado": 3,
+    "Alto": 4,
 }
 
 #  2. Carga de Datos
-def load_dataset(csv_path: str) -> tuple[pd.DataFrame, pd.Series, list]:
+
+
+def load_dataset(csv_path: str) -> tuple[pd.DataFrame, pd.Series, list, LabelEncoder]:
     """
     Carga el dataset desde CSV.
 
     Args:
         csv_path: ruta relativa al script O absoluta.
     Returns:
-        X (DataFrame), y (Series), class_names (list ordenada)
+        X (DataFrame), y (Series), class_names (list ordenada), le (LabelEncoder ajustado)
+    Raises:
+        FileNotFoundError: si el archivo no existe.
     """
 
     # Resuelve ruta absoluta
@@ -85,21 +89,31 @@ def load_dataset(csv_path: str) -> tuple[pd.DataFrame, pd.Series, list]:
     # Cargar con pandas
     df = pd.read_csv(csv_path)
 
+    # Manejo de nulos: Se eliminan las filas con nulos en features o target debido a que GaussianNB no maneja nulos. Se registra cuántas filas se eliminaron.
+    # Además, si se rellenan los valores nulos con la media o la moda, se corre el riesgo de una predicción incorrecta
+    initial_rows = len(df)
+    df.dropna(subset=FEATURES + [TARGET], inplace=True)
+    if len(df) < initial_rows:
+        logger.warning(
+            f"Se eliminaron {initial_rows - len(df)} filas con valores nulos en features o target.")
+
     X = df[FEATURES]
-    y_init = df[TARGET]
-    class_names = sorted(y_init.unique().tolist(), key=lambda x: CLASS_ORDER[x])
+    y_raw = df[TARGET]
+
+    class_names = ["Muy Bajo", "Bajo", "Medio", "Moderado", "Alto"]
+    y = y_raw.map(CLASS_ORDER)
+
     le = LabelEncoder()
     le.classes_ = np.array(class_names)
-    y = pd.Series(le.fit_transform(y_init), name=TARGET)
 
-    return X, y, class_names
+    return X, y, class_names, le
 
 
 #  3. Análisis de balance de clases
 def check_balance(y: pd.Series) -> dict:
     """
     Analiza la distribución de clases y detecta desbalance.
-    
+
     Returns:
         dict con conteos, proporciones, ratio de desbalance e indicador booleano
          de si el dataset se considera desbalanceado (>1.5) o no.
@@ -112,10 +126,6 @@ def check_balance(y: pd.Series) -> dict:
     min_ratio = min(ratios.values())
     max_ratio = max(ratios.values())
     imbalance_ratio = max_ratio / min_ratio
-
-
-    le = LabelEncoder()
-    classes = le.fit_transform(y)
 
     # Imprimir distribución de clases
     logger.info("Distribución de clases:")
@@ -135,9 +145,11 @@ def check_balance(y: pd.Series) -> dict:
     }
 
 #  4. Autobalance de clases
+
+
 def auto_balance(
-        X_train: np.ndarray, y_train: np.ndarray, strategy: str
-    ) -> tuple[np.ndarray, np.ndarray, list | None]:
+    X_train: np.ndarray, y_train: np.ndarray, strategy: str
+) -> tuple[np.ndarray, np.ndarray, list | None]:
     """
     Aplica balanceo automático de clases según la estrategia elegida.
 
@@ -145,7 +157,7 @@ def auto_balance(
       - "resample"    : Oversampling de la clase minoritaria con ruido gaussiano
       - "undersample" : Reducir la clase mayoritaria al tamaño de la minoritaria
       - "weight"      : Calcula priors ajustados para pasarle al modelo
-    
+
     Returns:
         X_train_balanced (np.ndarray): Características del set de entrenamiento balanceado.
         y_train_balanced (np.ndarray): Etiquetas del set de entrenamiento balanceado.
@@ -195,7 +207,7 @@ def auto_balance(
             X_bal.append(X_train[chosen])
             y_bal.extend([cls] * min_count)
 
-        # Convertir a arrays de cada clase    
+        # Convertir a arrays de cada clase
         X_train = np.vstack(X_bal)
         y_train = np.array(y_bal)
         priors = None
@@ -205,10 +217,12 @@ def auto_balance(
         total = sum(counts.values())
         n_classes = len(counts)
         # Invertir los pesos, mientras más pequeña la clase, mayor el peso
-        raw_weights = {cls: total / (n_classes * cnt) for cls, cnt in counts.items()}
+        raw_weights = {cls: total / (n_classes * cnt)
+                       for cls, cnt in counts.items()}
         weight_sum = sum(raw_weights.values())
         # Convierte pesos para que sumen 1 (probabilidades)
-        priors = [raw_weights[cls] / weight_sum for cls in sorted(counts.keys())]
+        priors = [raw_weights[cls] /
+                  weight_sum for cls in sorted(counts.keys())]
         print(f"  Priors calculados: {[round(p, 4) for p in priors]}")
 
     else:
@@ -254,8 +268,8 @@ def build_pipeline(var_smoothing: float, priors) -> Pipeline:
 
 #  6. Entrenamiento
 def train_nb(
-        pipeline: Pipeline, X_train: np.ndarray, 
-        y_train: np.ndarray, var_smoothing: float  
+        pipeline: Pipeline, X_train: np.ndarray,
+        y_train: np.ndarray, var_smoothing: float
 ) -> Pipeline:
     """
     Ajusta el pipeline sobre los datos de entrenamientos
@@ -265,10 +279,10 @@ def train_nb(
         X_train (np.ndarray): Características del set de entrenamiento.
         y_train (np.ndarray): Etiquetas del set de entrenamiento.
         var_smoothing (float): Parámetro de suavizado de varianza para GaussianNB.
-    
+
     Returns:
         Pipeline: Pipeline entrenado listo para predicciones.
-    """    
+    """
     # Registrar eventos del programa para seguimiento y debugging
     logger.info(
         "Entrenando GaussianNB — muestras: %d | features: %d | var_smoothing: %s",
@@ -288,17 +302,19 @@ def train_nb(
     return pipeline
 
 #  7. Guardar modelo entrenado, etiquetas de clase y LabelEncoder para uso en predicción
+
+
 def save_artifacts(
-    pipeline: Pipeline, class_names: list, 
+    pipeline: Pipeline, class_names: list,
     le: LabelEncoder, output_dir: Path,
 ) -> None:
     """
     Serializa el pipeline entrenado con jobliby las etiquetas de clase en output_dir.
- 
+
     Archivos generados:
       burnout_pipeline.pkl  → Pipeline completo (scaler + GaussianNB)
       burnout_labels.pkl    → Lista ordenada de class_names
- 
+
     Args:
         pipeline:    pipeline entrenado.
         class_names: lista de nombres de clase en el orden del LabelEncoder.
@@ -310,40 +326,36 @@ def save_artifacts(
     joblib.dump(pipeline, output_dir / "burnout_pipeline.pkl")
     joblib.dump(class_names, output_dir / "burnout_labels.pkl")
     joblib.dump(le, output_dir / "burnout_encoder.pkl")
- 
-    logger.info("Modelos guardados en: %s", output_dir)
+
+    logger.info("Artefactos guardados en: %s", output_dir)
 
 #  8. Main: Ejecución completa del pipeline
+
+
 def main():
     logger.info("GaussianNB — Pipeline de Entrenamiento")
     logger.info("Modelo: GaussianNB(priors=None, var_smoothing=1e-9)")
 
     # Carga
-    X, y, class_names = load_dataset(CONFIG["dataset"])
-
-    # Análisis de balance
-    balance_info = check_balance(y)
+    X, y, class_names, le = load_dataset(CONFIG["dataset"])
 
     # Split inicial (estratificado)
-    X_arr = X.values
-    y_arr = y.values
-    X_train, X_test, y_init, y_test = train_test_split(
-        X_arr, y_arr,
+    X_train, X_test, y_train, y_test = train_test_split(
+        X.values, y.values,
         test_size=CONFIG["test_size"],
         random_state=CONFIG["random_state"],
-        stratify=y_arr
+        stratify=y.values
     )
-    le = LabelEncoder()
-    y_train  = pd.Series(le.fit_transform(y_init), name=TARGET)
 
+    # Análisis de balance
+    balance_info = check_balance(y_train)
     logger.info("Split → train: %d | test: %d", len(X_train), len(X_test))
 
     # Auto Balance (solo en train)
     priors_override = CONFIG["priors"]   # None por defecto
+
     if CONFIG["auto_balance"] and balance_info["is_imbalanced"]:
-        X_train, y_train, priors_computed = auto_balance(
-            X_train, y_train, CONFIG["balance_strategy"]
-        )
+        X_train, y_train, priors_computed = auto_balance(X_train, y_train, CONFIG["balance_strategy"])
         if priors_computed is not None:
             priors_override = priors_computed
     elif CONFIG["auto_balance"] and not balance_info["is_imbalanced"]:
@@ -351,17 +363,22 @@ def main():
 
     # Construir pipeline
     pipeline = build_pipeline(CONFIG["var_smoothing"], priors_override)
-
     # Entrenamiento final
     train_nb(pipeline, X_train, y_train, CONFIG["var_smoothing"])
 
     # Guardar modelo
     if CONFIG["save_model"]:
-        save_artifacts(pipeline, class_names, le, Path(CONFIG["output_dir"]))
-        joblib.dump((X_test, y_test), Path(CONFIG["output_dir"]) / "burnout_test_set.pkl")
+        output_path = Path(CONFIG["output_dir"])
+        save_artifacts(pipeline, class_names, le, output_path)
+
+        # Guardamos el set de prueba para la evaluación posterior
+        test_set_path = output_path / "burnout_test_set.pkl"
+        joblib.dump((X_test, y_test), test_set_path)
+        logger.info(f"Set de prueba guardado en: {test_set_path}")
 
     logger.info(" Entrenamiento finalizado")
     return pipeline
+
 
 if __name__ == "__main__":
     pipeline = main()
