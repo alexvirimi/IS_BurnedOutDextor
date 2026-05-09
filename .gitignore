@@ -28,3 +28,7 @@ temp-docs/
 init_db.py
 app/config.py
 test.db
+
+# react
+node_modules/
+.next/

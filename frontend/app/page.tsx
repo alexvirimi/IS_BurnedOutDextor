@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { MicrosoftIcon } from "@/components/icons"
+import Link from "next/link";
+import { MicrosoftIcon } from "@/components/icons";
 
 export default function HomePage() {
   return (
-    <div 
+    <div
       className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex"
       style={{
-        backgroundImage: "url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/background-home-6kpqa8ERssLTFhUMEfZHc1VlHFE2ay.png')"
+        backgroundImage: "url('/splashpage-background.png')",
       }}
     >
       {/* Left Content */}
       <div className="flex-1 flex flex-col justify-center px-12 lg:px-24">
-        <h1 className="font-heading font-bold text-4xl lg:text-5xl xl:text-6xl uppercase leading-tight tracking-tight max-w-xl">
+        <h1 className="font-heading font-bold text-4xl lg:text-5xl xl:text-6xl uppercase leading-tight tracking-tight max-w-l">
           <span className="text-foreground">TOMARTE UN</span>
           <br />
           <span className="text-foreground">MOMENTO </span>
@@ -35,8 +35,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Right side is covered by the background image */}
       <div className="hidden lg:block flex-1" />
     </div>
-  )
+  );
 }
