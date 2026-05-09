@@ -13,11 +13,11 @@ import {
 
 export type UserRole = "worker" | "pm" | "hr";
 
-export interface SessionData {
-  auth_user_id: string;
+interface SessionData {
   worker_id: string;
   rank_level: 1 | 2 | 3;
   rank_name: string;
+  // auth_user_id removed — the HttpOnly cookie handles authentication
 }
 
 interface AuthContextValue {
