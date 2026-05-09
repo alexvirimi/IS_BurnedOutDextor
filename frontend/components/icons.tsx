@@ -1,0 +1,169 @@
+export function BudLogo({ className }: { className?: string }) {
+  return (
+    <svg
+      width="504"
+      height="224"
+      viewBox="0 0 504 224"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <g opacity="0.9">
+        <path
+          d="M186.798 68.0543C196.792 61.1322 209.423 60.9735 219.178 67.2646C225.472 71.3247 227.309 78.9437 227.309 85.642V104.489C227.532 111.173 230.745 116.311 235.553 119.864C240.406 123.45 246.9 125.419 253.503 125.567C260.106 125.714 266.657 124.037 271.64 120.534C276.562 117.074 280.028 111.788 280.551 104.456V80.306C280.551 77.2652 280.771 73.1786 283.673 70.4567C287.305 67.0504 293.287 65.0937 299.481 64.7187C305.716 64.3413 312.523 65.5402 317.943 68.8464C323.093 71.9885 324.82 78.0088 325.361 83.1993C327.908 107.663 328.961 128.428 328.013 145.794C327.065 163.149 324.113 177.227 318.563 188.246C312.987 199.317 304.819 207.241 293.606 212.284C282.45 217.301 268.38 219.422 251.033 219.114C233.468 219.278 219.451 217.079 208.489 212.041C197.459 206.971 189.628 199.075 184.4 188.093C179.2 177.17 176.601 163.25 175.866 146.116C175.131 128.97 176.258 108.476 178.603 84.3353C179.186 78.3315 181.338 71.8367 186.798 68.0543ZM297.102 166.85C297.102 161.955 291.57 159.019 287.294 161.483C261.046 161.56 243.08 161.56 217.319 161.597C213.09 159.113 207.559 162.005 207.558 166.869C207.558 169.016 208.709 171.011 210.598 172.07C242.687 190.053 261.969 190.322 294.057 172.098C295.952 171.022 297.102 169.012 297.102 166.85Z"
+          fill="#2694D2"
+        />
+        <path
+          d="M35.0711 3.21038C30.0365 0.29243 24.4574 -1.70374 17.0343 2.07032L16.9633 2.1062L16.8961 2.14704C11.0515 5.67079 5.34428 9.19507 2.31851 13.4643C0.752018 15.6749 -0.140915 18.1352 0.0182201 20.911C0.17589 23.6583 1.35435 26.544 3.59131 29.6483L3.65857 29.7424L3.73951 29.829C15.4571 42.5475 20.1578 62.0614 22.3181 79.8696C24.4794 97.6864 21.2101 112.598 19.7675 131.187C14.0286 168.567 7.45786 193.909 32.5206 212.915C57.5833 231.922 119.982 228.096 145.488 188.816C173.269 146.033 160.577 95.3459 130.755 83.7835C119.162 79.2887 105.651 75.9235 90.8533 77.4255C87.3749 77.84 86.9475 78.8604 87.4888 81.355C93.3904 109.055 89.1722 132.652 86.7209 137.523C85.6743 140.707 81.6197 145.759 77.7938 145.759C69.7197 145.759 71.5653 142.1 72.055 137.523C85.4456 88.106 50.3748 12.08 35.0711 3.21038Z"
+          fill="#2694D2"
+        />
+        <path
+          d="M468.929 3.21038C473.963 0.29243 479.543 -1.70374 486.966 2.07032L487.037 2.1062L487.104 2.14704C492.948 5.67079 498.656 9.19507 501.681 13.4643C503.248 15.6749 504.141 18.1352 503.982 20.911C503.824 23.6583 502.646 26.544 500.409 29.6483L500.341 29.7424L500.261 29.829C488.543 42.5475 483.842 62.0614 481.682 79.8696C479.521 97.6864 482.79 112.598 484.233 131.187C489.971 168.567 496.542 193.909 471.48 212.915C446.417 231.922 384.018 228.096 358.512 188.816C330.731 146.033 343.423 95.3459 373.245 83.7835C384.838 79.2887 398.349 75.9235 413.147 77.4255C416.625 77.84 417.052 78.8604 416.511 81.355C410.61 109.055 414.828 132.652 417.279 137.523C418.326 140.707 422.38 145.759 426.206 145.759C434.28 145.759 432.435 142.1 431.945 137.523C418.554 88.106 453.625 12.08 468.929 3.21038Z"
+          fill="#2694D2"
+        />
+      </g>
+    </svg>
+  );
+}
+
+export function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path
+        d="M10 9.33331L8 11.3333L6 9.33331"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2.66675 11.3333V13.3333C2.66675 13.5101 2.73699 13.6797 2.86201 13.8047C2.98703 13.9298 3.1566 14 3.33341 14H12.6667C12.8436 14 13.0131 13.9298 13.1382 13.8047C13.2632 13.6797 13.3334 13.5101 13.3334 13.3333V11.3333M8.00008 11.3333V2V11.3333Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function MicrosoftIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path d="M7.60413 7.60413H0V0H7.60413V7.60413Z" fill="#F1511B" />
+      <path d="M16.0001 7.60413H8.396V0H16.0001V7.60413Z" fill="#80CC28" />
+      <path d="M7.60394 16.0001H0V8.396H7.60394V16.0001Z" fill="#00ADEF" />
+      <path d="M16.0001 16.0001H8.396V8.396H16.0001V16.0001Z" fill="#FBBC09" />
+    </svg>
+  );
+}
+
+export function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+export function ChevronUpIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="m18 15-6-6-6 6" />
+    </svg>
+  );
+}
+
+export function FilterIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </svg>
+  );
+}
+
+export function InbudexLogo({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 200 50"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <text
+        x="0"
+        y="40"
+        fontFamily="var(--font-unbounded), Unbounded, sans-serif"
+        fontSize="38"
+        fontWeight="700"
+        fill="#3D4676"
+        letterSpacing="-1"
+      >
+        inbudex
+      </text>
+    </svg>
+  );
+}

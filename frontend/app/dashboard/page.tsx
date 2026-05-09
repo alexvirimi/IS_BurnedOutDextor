@@ -1,5 +1,9 @@
-import { Dashboard } from "@/components/dashboard"
+import { Dashboard } from "@/components/dashboard";
 
+/**
+ * Replace the hardcoded role with your real auth logic, e.g.:
+ *   const role = await getSessionRole()   // "hr" | "pm" | "worker"
+ */
 export default function DashboardPage() {
-  return <Dashboard />
+  return <Dashboard role="hr" />;
 }

@@ -1,14 +1,15 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { MicrosoftIcon } from "@/components/icons"
+import Link from "next/link";
+import { MicrosoftIcon } from "@/components/icons";
 
 export default function HomePage() {
   return (
-    <div 
+    <div
       className="min-h-screen w-full bg-cover bg-center bg-no-repeat flex"
       style={{
-        backgroundImage: "url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/background-home-6kpqa8ERssLTFhUMEfZHc1VlHFE2ay.png')"
+        backgroundImage:
+          "url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/background-home-6kpqa8ERssLTFhUMEfZHc1VlHFE2ay.png')",
       }}
     >
       {/* Left Content */}
@@ -35,8 +36,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Right side is covered by the background image */}
       <div className="hidden lg:block flex-1" />
     </div>
-  )
+  );
 }
