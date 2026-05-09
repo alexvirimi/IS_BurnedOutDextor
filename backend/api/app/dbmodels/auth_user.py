@@ -36,7 +36,7 @@ class AuthUser(Base):
     # Nombre de usuario único para acceso
     username: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     # Contraseña en texto plano (como se requirió, sin hashing)
-    password: Mapped[str] = mapped_column(String(100))
+    password: Mapped[str] = mapped_column(String(255))
 
     # Relación hacia el trabajador
     worker: Mapped[Worker] = relationship()
