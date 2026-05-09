@@ -27,28 +27,14 @@ export function BurnoutRiskCard({
 
 interface SidebarShellProps {
   userName: string;
-  userImage: string;
   children: React.ReactNode;
 }
 
-export function SidebarShell({
-  userName,
-  userImage,
-  children,
-}: SidebarShellProps) {
+export function SidebarShell({ userName, children }: SidebarShellProps) {
   return (
     <aside className="w-72 h-screen bg-background flex flex-col border-r border-border fixed left-0 top-0 overflow-y-auto">
       {/* User Profile */}
       <div className="flex flex-col items-center pt-8 px-6">
-        <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/20 mb-4">
-          <Image
-            src={userImage}
-            alt={userName}
-            width={128}
-            height={128}
-            className="w-full h-full object-cover"
-          />
-        </div>
         <h2 className="font-heading font-bold text-foreground text-center text-sm">
           {userName}
         </h2>

@@ -1,9 +1,10 @@
 import { Dashboard } from "@/components/dashboard";
+import { DashboardAuthGuard } from "@/components/dashboard/auth-guard";
 
-/**
- * Replace the hardcoded role with your real auth logic, e.g.:
- *   const role = await getSessionRole()   // "hr" | "pm" | "worker"
- */
 export default function DashboardPage() {
-  return <Dashboard role="hr" />;
+  return (
+    <DashboardAuthGuard>
+      <Dashboard />
+    </DashboardAuthGuard>
+  );
 }

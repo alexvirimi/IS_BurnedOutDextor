@@ -20,14 +20,12 @@ interface HRSidebarProps {
   activeView: HRView;
   onViewChange: (view: HRView) => void;
   userName: string;
-  userImage: string;
 }
 
 export function HRSidebar({
   activeView,
   onViewChange,
   userName,
-  userImage,
 }: HRSidebarProps) {
   const isHistoricosActive = ["areas", "grupos", "trabajadores"].includes(
     activeView,
@@ -40,7 +38,7 @@ export function HRSidebar({
   const [encuestasOpen, setEncuestasOpen] = useState(isEncuestasActive);
 
   return (
-    <SidebarShell userName={userName} userImage={userImage}>
+    <SidebarShell userName={userName}>
       <SidebarNavButton
         label="Mi Progreso"
         isActive={activeView === "mi-progreso"}

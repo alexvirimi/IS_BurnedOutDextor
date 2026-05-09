@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { PowerBIPlaceholder } from "@/components/dashboard/shared/power-bi-placeholder";
 import { ReporteList } from "@/components/dashboard/shared/reporte-list";
 
@@ -83,6 +84,16 @@ interface HRHistoricosProps {
 }
 
 export function HRHistoricos({ type }: HRHistoricosProps) {
+  const reportes = REPORTES_BY_TYPE[type];
+
+  // Initialize with the first report of the current type
+  const [selectedReporte, setSelectedReporte] = useState<Reporte>(reportes[0]);
+
+  // Reset selection whenever type changes
+  useEffect(() => {
+    setSelectedReporte(REPORTES_BY_TYPE[type][0]);
+  }, [type]);
+
   return (
     <div className="p-8">
       <h1
@@ -91,9 +102,14 @@ export function HRHistoricos({ type }: HRHistoricosProps) {
       >
         VISUALIZACIÓN
       </h1>
-      <PowerBIPlaceholder label={`Power BI · ${SUBTITLES[type]}`} />
+      <PowerBIPlaceholder label={`Power BI · ${SUBTITLES[type]}`} powerBiTitle={selectedReporte.title} />
       <ReporteList
-        reportes={REPORTES_BY_TYPE[type]}
+        reportes={reportes}
+        selectedReporte={selectedReporte}
+        onSelectReporte={(reporte) => {
+          const selected = reportes.find((item) => item.id === reporte.id);
+          if (selected) setSelectedReporte(selected);
+        }}
         title={`REPORTES · ${SUBTITLES[type].toUpperCase()}`}
       />
     </div>

@@ -11,17 +11,15 @@ interface WKRSidebarProps {
   activeTab: WKRTab;
   onTabChange: (tab: WKRTab) => void;
   userName: string;
-  userImage: string;
 }
 
 export function WKRSidebar({
   activeTab,
   onTabChange,
   userName,
-  userImage,
 }: WKRSidebarProps) {
   return (
-    <SidebarShell userName={userName} userImage={userImage}>
+    <SidebarShell userName={userName}>
       <SidebarNavButton
         label="Mi Progreso"
         isActive={activeTab === "progreso"}
