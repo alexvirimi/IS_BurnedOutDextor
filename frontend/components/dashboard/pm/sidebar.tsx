@@ -26,7 +26,7 @@ export function PMSidebar({
   userName,
 }: PMSidebarProps) {
   const isHistoricosExpanded = activeView === "historicos";
-  const isFlaggearExpanded = activeView === "flaggear";
+  // const isFlaggearExpanded = activeView === "flaggear";
 
   return (
     <SidebarShell userName={userName}>
@@ -55,7 +55,7 @@ export function PMSidebar({
       </SidebarExpandable>
 
       {/* Flaggear */}
-      <SidebarExpandable
+      {/* <SidebarExpandable
         label="Flaggear"
         isExpanded={isFlaggearExpanded}
         isActive={isFlaggearExpanded}
@@ -69,7 +69,7 @@ export function PMSidebar({
             onClick={() => onViewChange("flaggear", g)}
           />
         ))}
-      </SidebarExpandable>
+      </SidebarExpandable> */}
 
       {/* Encuestas */}
       <SidebarNavButton
