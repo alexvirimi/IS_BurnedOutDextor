@@ -2,15 +2,53 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth/context";
+import { authApi } from "@/lib/auth/api";
+import type { UserRole } from "@/lib/auth/context";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function roleToPath(role: UserRole): string {
+  // All roles land on /dashboard; the Dashboard component reads role from context.
+  return "/dashboard";
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { login } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push("/dashboard");
+    setError(null);
+    setLoading(true);
+
+    try {
+      const data = await authApi.login({ username, password });
+
+      // Persist session globally and in localStorage
+      login({
+        auth_user_id: data.auth_user_id,
+        worker_id: data.worker_id,
+        rank_level: data.rank_level,
+        rank_name: data.rank_name,
+      });
+
+      // Redirect — role resolved inside dashboard via context
+      router.push(roleToPath("worker")); // path is /dashboard for all roles
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Error al iniciar sesión";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -22,7 +60,7 @@ export default function LoginPage() {
       }}
     >
       <div className="w-full max-w-md px-8">
-        {/* Logo */}
+        {/* Logo — unchanged */}
         <div className="flex justify-center mb-8">
           <svg
             width="150"
@@ -66,27 +104,36 @@ export default function LoginPage() {
             <path
               fillRule="evenodd"
               clipRule="evenodd"
-              d="M102.786 23.7119C102.124 21.6732 101.999 19.6682 102.427 17.7087L102.428 17.7058C102.872 15.7213 103.79 13.9935 105.18 12.534C106.586 11.0431 108.345 9.96007 110.441 9.27889C112.411 8.63876 114.356 8.47586 116.266 8.80248C118.182 9.10666 119.889 9.91639 121.376 11.2216C122.891 12.5044 123.991 14.238 124.69 16.3909L124.845 16.8667L111.404 24.3148C111.931 24.7526 112.523 25.0323 113.186 25.1631C114.13 25.3368 115.208 25.243 116.434 24.8447C117.41 24.5276 118.201 24.1155 118.822 23.6195C119.456 23.0928 119.993 22.4237 120.428 21.6027L120.718 21.0557L125.863 23.9587L125.65 24.4589C124.397 27.4074 121.86 29.4603 118.161 30.662C115.856 31.4111 113.647 31.636 111.544 31.3158L111.54 31.3154L111.537 31.3149C109.43 30.9695 107.605 30.1363 106.079 28.8092C104.553 27.4824 103.457 25.7768 102.786 23.7119ZM108.97 16.7632C109.573 15.533 110.598 14.6829 112.044 14.2129C112.116 14.1896 112.188 14.1676 112.259 14.1469L112.264 14.1454C112.367 14.1158 112.469 14.0891 112.57 14.0651C112.694 14.0359 112.816 14.0108 112.938 13.9899C112.983 13.9822 113.028 13.9751 113.073 13.9685C113.162 13.9555 113.25 13.9447 113.338 13.9361C114.04 13.8675 114.714 13.9409 115.36 14.1562C116.393 14.5008 117.213 15.1462 117.818 16.0925L108.795 21.1062C108.456 19.9468 108.382 18.8927 108.571 17.9442C108.583 17.8844 108.596 17.8251 108.61 17.7663C108.618 17.7336 108.626 17.7012 108.634 17.6688C108.679 17.4973 108.732 17.3293 108.795 17.165C108.832 17.0685 108.872 16.9731 108.915 16.8791L108.918 16.8731C108.923 16.8603 108.929 16.8476 108.935 16.8348C108.947 16.8108 108.958 16.787 108.97 16.7632Z"
+              d="M102.786 23.7119C102.124 21.6732 101.999 19.6682 102.427 17.7087L102.428 17.7058C102.872 15.7213 103.79 13.9935 105.18 12.534C106.586 11.0431 108.345 9.96007 110.441 9.27889C112.411 8.63876 114.356 8.47586 116.266 8.80248C118.182 9.10666 119.889 9.91639 121.376 11.2216C122.891 12.5044 123.991 14.238 124.69 16.3909L124.845 16.8667L111.404 24.3148C111.931 24.7526 112.523 25.0323 113.186 25.1631C114.13 25.3368 115.208 25.243 116.434 24.8447C117.41 24.5276 118.201 24.1155 118.822 23.6195C119.456 23.0928 119.993 22.4237 120.428 21.6027L120.718 21.0557L125.863 23.9587L125.65 24.4589C124.397 27.4074 121.86 29.4603 118.161 30.662C115.856 31.4111 113.647 31.636 111.544 31.3158L111.54 31.3154L111.537 31.3149C109.43 30.9695 107.605 30.1363 106.079 28.8092C104.553 27.4824 103.457 25.7768 102.786 23.7119ZM108.97 16.7632C109.573 15.533 110.598 14.6829 112.044 14.2129C112.116 14.1896 112.188 14.1676 112.259 14.1469L112.264 14.1454C112.367 14.1158 112.469 14.0891 112.57 14.0651C112.694 14.0359 112.816 14.0108 112.938 13.9899C112.983 13.9822 113.028 13.9751 113.073 13.9685C113.162 13.9555 113.25 13.9447 113.338 13.9361C114.04 13.8675 114.714 13.9409 115.36 14.1562C116.393 14.5008 117.213 15.1462 117.818 16.0925L108.795 21.1062C108.456 19.9468 108.382 18.8927 108.571 17.9442C108.583 17.8844 108.596 17.8251 108.61 17.7663C108.618 17.7336 108.626 17.7012 108.634 17.6688C108.679 17.4974 108.732 17.3293 108.795 17.165C108.832 17.0685 108.872 16.9731 108.915 16.8791L108.918 16.8731C108.923 16.8603 108.929 16.8476 108.935 16.8348C108.947 16.8108 108.958 16.787 108.97 16.7632Z"
               fill="#3D4676"
             />
           </svg>
         </div>
 
+        {/* Error banner */}
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-sans">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
-              htmlFor="email"
+              htmlFor="username"
               className="block font-sans text-sm font-medium text-foreground mb-1"
             >
-              Correo
+              Usuario
             </label>
             <input
-              id="email"
-              type="email"
-              placeholder="example@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-white border border-border rounded-lg font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              id="username"
+              type="text"
+              placeholder="tu usuario"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              disabled={loading}
+              className="w-full px-4 py-3 bg-white border border-border rounded-lg font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
             />
           </div>
 
@@ -103,15 +150,18 @@ export default function LoginPage() {
               placeholder="contraseña"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-white border border-border rounded-lg font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              required
+              disabled={loading}
+              className="w-full px-4 py-3 bg-white border border-border rounded-lg font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-primary text-primary-foreground font-sans font-medium py-3 rounded-lg hover:opacity-90 transition-opacity mt-2"
+            disabled={loading}
+            className="w-full bg-primary text-primary-foreground font-sans font-medium py-3 rounded-lg hover:opacity-90 transition-opacity mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Ingresar
+            {loading ? "Ingresando..." : "Ingresar"}
           </button>
         </form>
       </div>
