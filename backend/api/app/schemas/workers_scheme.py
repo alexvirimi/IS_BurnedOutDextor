@@ -43,6 +43,7 @@ class WorkerDetailResponse(BaseModel):
     group: Optional[str] = None
     rank: Optional[str] = None
     model_config = {"from_attributes": True} 
+
 class WorkerResponse(BaseModel):
     # Respuesta con información de trabajador
     id: UUID
