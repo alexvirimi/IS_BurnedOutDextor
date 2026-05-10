@@ -41,11 +41,6 @@ class AuthUserService:
         ).first()
 
         if not auth_user:
-<<<<<<< HEAD
-=======
-            # Always run the check to prevent timing attacks
-            bcrypt.checkpw(b"dummy", b"$2b$12$C6UzMDM.H6dfI/f/IKcEe.6Q5QJ8JrjVNewc19hXtOD87mpy4V6Ga")
->>>>>>> 1d6c90aa (FIXED: Users can now access to DELETE-type endpoints)
             return None
 
         if not bcrypt.checkpw(
