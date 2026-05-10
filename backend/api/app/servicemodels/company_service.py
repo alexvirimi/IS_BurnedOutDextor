@@ -13,7 +13,7 @@ class CompanyService:
         return self.repo.get_all()              # devuelve la información de todos los trabajadores
     
     def get_worker_info(self, id: UUID):
-        return self.repo.get_by_id(id)          # devuelve toda la información de un trabajador
+        return self.repo.get_by_worker_or_company_id(id)
     
     def create_worker_info(self, data: dict):
         return self.repo.create(data)           # crea los detalles de un trabajador que se pasan en forma de diccionario

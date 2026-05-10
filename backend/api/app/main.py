@@ -16,24 +16,23 @@ from app.routes.questions_crud_service import router as question_router
 from app.routes.rank_cr_service import router as rank_router
 from app.routes.result_cr_service import router as result_router
 from app.routes.surveys_cr_service import router as survey_router
+from app.routes.survey_assignment_service import router as survey_assignment_router
 from app.routes.workers_cr_service import router as worker_router
 from app.routes.auth_service import router as auth_router
-
-auth_scheme = APIKeyHeader(
-    name="auth-user-id",
-    description="ID del usuario autenticado (obtenido del /login)",
-    auto_error=False 
-)
+from app.routes.psicometric_value_r_service import router as psicometric_variable_router
+from fastapi.security import OAuth2PasswordBearer
 
 app = FastAPI(
     title="BurnedOutDextor API",
-    description="API para el proyecto BurnedOutDextor. Gestiona encuestas, preguntas, respuestas, trabajadores, empresas, áreas, grupos, rangos y resultados.",
+    description="API para el proyecto BurnedOutDextor.",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+
     swagger_ui_init_oauth={
         "usePkceWithAuthorizationCodeGrant": True,
+    },
+
+    swagger_ui_parameters={
+        "persistAuthorization": True
     }
 )
 
@@ -72,9 +71,10 @@ app.include_router(question_survey_router)
 app.include_router(rank_router)
 app.include_router(result_router)
 app.include_router(survey_router)
+app.include_router(survey_assignment_router)
 app.include_router(worker_router)
 app.include_router(auth_router)
-
+app.include_router(psicometric_variable_router)
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_dir):

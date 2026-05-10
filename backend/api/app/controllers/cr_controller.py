@@ -2,7 +2,9 @@
 
 from typing import Type, TypeVar, List, Optional, Any
 from sqlalchemy.orm import Session
-
+from uuid import UUID
+from app.dbmodels.company import Company
+from sqlalchemy import or_
 T = TypeVar('T')
 
 class UniversalRepository:
@@ -22,3 +24,11 @@ class UniversalRepository:
         self.db.commit()
         self.db.refresh(obj)
         return obj
+    def get_by_worker_or_company_id(self, id: UUID):
+        return self.db.query(Company).filter(
+            or_(
+                Company.id == id,
+                Company.id_worker == id
+            )
+        ).first()
+
