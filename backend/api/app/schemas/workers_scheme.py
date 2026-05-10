@@ -37,12 +37,12 @@ class WorkerDetailResponse(BaseModel):
     last_names: str
     age: int
     gender: str
-    flag: bool
     id_group: Optional[UUID] = None
     id_rank: Optional[UUID] = None
     group: Optional[str] = None
     rank: Optional[str] = None
     model_config = {"from_attributes": True} 
+
 class WorkerResponse(BaseModel):
     # Respuesta con información de trabajador
     id: UUID
@@ -50,7 +50,6 @@ class WorkerResponse(BaseModel):
     last_names: str
     age: int
     gender: str
-    flag: bool
     id_group: UUID
     id_rank: UUID
     model_config = {"from_attributes": True} 

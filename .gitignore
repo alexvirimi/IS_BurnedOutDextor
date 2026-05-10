@@ -25,34 +25,11 @@ venv/
 # Markdown (documentación de prueba - archivos creados por el asistente)
 # Todos los MDs de documentación están en /temp-docs/ que está ignorado
 temp-docs/
-<<<<<<< HEAD
-=======
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-env/
-venv/
-*.env
-
-# Docker
-*.log
-docker-compose.override.yml
-
-# Poetry
-.poetry/
-venv/
-
-# VSCode
-.vscode/
-
-# macOS
-.DS_Store
-backend/api/RELACIONES.md
-
 
 init_db.py
 app/config.py
 test.db
 
+# react
+node_modules/
+.next/

@@ -1,10 +1,11 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Cookie, HTTPException, status
 from fastapi.security import APIKeyHeader
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.auth_scheme import CurrentUserData
 from typing import Optional, List
 from uuid import UUID
+from core.security import decode_access_token
 
 # Define el esquema de seguridad para Swagger
 auth_scheme = APIKeyHeader(
@@ -29,29 +30,13 @@ def clear_user_session(auth_user_id: UUID):
     _active_sessions.pop(str(auth_user_id), None)
 
 async def get_current_user(
-    auth_user_id: str = Depends(auth_scheme),  # Usa el scheme de seguridad
+    access_token: str | None = Cookie(default=None),
     db: Session = Depends(get_db)
 ) -> CurrentUserData:
-    #Dependencia que valida que el usuario esté autenticado.
-    #Extrae el auth_user_id del header y verifica que tenga una sesión activa.
-    #
-    
-    if not auth_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No se proporcionó credencial de autenticación"
-        )
-    
-    # Busca la sesión activa del usuario
-    user_session = get_user_session(auth_user_id)
-    
-    if not user_session:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuario no autenticado. Por favor, realiza login primero."
-        )
-    
-    return CurrentUserData(**user_session)
+    if not access_token:
+        raise HTTPException(status_code=401, detail="No autenticado")
+    payload = decode_access_token(access_token)
+    return CurrentUserData(**payload)
 
 def require_role(allowed_levels: List[int]):
     #Factory que crea una dependencia para verificar roles específicos.#

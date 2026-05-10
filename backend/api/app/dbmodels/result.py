@@ -7,7 +7,8 @@ from sqlalchemy import (
     ForeignKey,
     Date,
     Integer,
-    UUID
+    UUID,
+    Boolean
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -33,6 +34,8 @@ class Result(Base):
     )
     
     burnout_score: Mapped[str] = mapped_column(String(36))
+    # Bandera para marcar resultados (usada por líderes)
+    flag: Mapped[bool] = mapped_column(Boolean, default=False)
     
     id_worker: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),

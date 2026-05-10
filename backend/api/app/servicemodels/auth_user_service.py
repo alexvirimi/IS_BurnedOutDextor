@@ -8,6 +8,7 @@ from app.dbmodels.workers import Worker
 from sqlalchemy.orm import Session 
 from sqlalchemy import and_
 from uuid import UUID
+import bcrypt
 
 class AuthUserService:
     """
@@ -22,31 +23,24 @@ class AuthUserService:
         self.db = db
     
     def register_user(self, data: dict):
-        """
-        Registra un nuevo usuario autenticado.
-        Crea un nuevo registro en la tabla auth_user con el worker_id, username y password.
-        El password se almacena en texto plano como se requirió.
-        """
+        # Hash before storing — never store raw password
+        raw_password = data.pop("password")
+        data["password"] = bcrypt.hashpw(
+            raw_password.encode("utf-8"),
+            bcrypt.gensalt(rounds=12)  # 12 rounds is the production-safe minimum
+        ).decode("utf-8")
         return self.repo.create(data)
-    
+
     def login_user(self, username: str, password: str):
-        """
-        Valida las credenciales de un usuario durante el login.
-        Busca un usuario con el username exacto y verifica si el password coincide (comparación simple).
-        Retorna el registro AuthUser si las credenciales son válidas, None en caso contrario.
-        """
-        # Consulta la base de datos para encontrar el usuario por username
-        auth_user = self.db.query(AuthUser).filter(AuthUser.username == username).first()
-        
-        # Si el usuario no existe, retorna None
+        auth_user = self.db.query(AuthUser).filter(
+            AuthUser.username == username
+        ).first()
         if not auth_user:
+            # Always run the check to prevent timing attacks
+            bcrypt.checkpw(b"dummy", b"$2b$12$dummy_hash_to_waste_time_xxxxxxxxx")
             return None
-        
-        # Valida el password (comparación de texto plano)
-        if auth_user.password != password:
+        if not bcrypt.checkpw(password.encode("utf-8"), auth_user.password.encode("utf-8")):
             return None
-        
-        # Retorna el usuario si las credenciales son correctas
         return auth_user
     
     def get_auth_user_by_id(self, auth_user_id: UUID):
