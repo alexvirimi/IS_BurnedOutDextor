@@ -1,16 +1,16 @@
-#docs
+#ing-software/docs/endpoints
 
 A continuación se presentan todos los endpoints elaborados para el proyecto agrupados por tabla en orden alfabético:
-- [Areas](#Tabla%20Areas)
-- [Answers](#Tabla%20Answers)
-- [Company](#Tabla%20Company)
-- [Groups](#Tabla%20Groups)
-- [Question](#Tabla%20Question)
-- [QuestionSurvey](#Tabla%20QuestionSurvey)
-- [Rank](#Tabla%20Rank)
-- [Results](#Tabla%20Results)
-- [Survey](#Tabla%20Survey)
-- [Worker](#Tabla%20Worker)
+- [Areas](#tabla-areas)
+- [Answers](#tabla-answers)
+- [Company](#tabla-company)
+- [Groups](#tabla-groups)
+- [Question](#tabla-question)
+- [QuestionSurvey](#tabla-questionsurvey)
+- [Rank](#tabla-rank)
+- [Results](#tabla-results)
+- [Survey](#tabla-survey)
+- [Worker](#tabla-worker)
 
 >[!todo]
 >Aún no se cuenta con un endpoint que mande los datos de Answers al modelo de IA y otro que retorne los resultados de la IA a la tabla Results, pero se tiene pensado incluirse a futuro.
@@ -107,8 +107,8 @@ Create + Read
 
 | Método | Endpoint                    | Descripción                                                           | Parámetros  |
 | ------ | --------------------------- | --------------------------------------------------------------------- | ----------- |
-| `GET`  | /worker/                    | Obtiene la información básica de cada trabajador                      |             |
-| `POST` | /worker/                    | Crea la información básica de un trabajador                           |             |
+| `GET`  | /worker/                    | Obtiene la información básica de cada trabajador                      | -           |
+| `POST` | /worker/                    | Crea la información básica de un trabajador                           | -           |
 | `GET`  | /worker/{worker_id}         | Obtiene la información básica de un trabajador dada su ID             | `worker_id` |
 | `GET`  | /worker/{worker_id}/details | Obtiene los datos completos (con nombres) de un trabajador dado su ID | `worker_id` |
 
