@@ -24,18 +24,6 @@ class WorkerService:
         # Crear nuevo trabajador
         return self.repo.create(data)
     
-    def update_worker_flag(self, worker_id: UUID, flag: bool):
-        # Actualizar bandera de trabajador (para marcar casos especiales)
-        worker = self.get_worker(worker_id)
-        if not worker:
-            return None
-        
-        worker.flag = flag
-        self.db.commit()
-        self.db.refresh(worker)
-        
-        return worker
-    
     def get_workers_by_group(self, group_id: UUID):
         # Obtener trabajadores de un grupo específico
         return self.db.query(Worker).filter(Worker.id_group == group_id).all()

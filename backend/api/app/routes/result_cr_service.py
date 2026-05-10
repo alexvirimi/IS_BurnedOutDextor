@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.servicemodels.result_service import ResultService
-from app.schemas.result_scheme import ResultResponse, ResultCreate
+from app.schemas.result_scheme import ResultResponse, ResultCreate, UpdateFlagRequest
 from app.deps.auth_deps import get_current_user, require_role
 from app.schemas.auth_scheme import CurrentUserData
 from uuid import UUID
@@ -94,3 +94,44 @@ def create_result(
     
     service = ResultService(db)
     return service.create_result(payload.model_dump())
+
+@router.patch("/{result_id}/flag", response_model=ResultResponse, status_code=status.HTTP_200_OK)
+def update_result_flag(
+    result_id: UUID,
+    payload: UpdateFlagRequest,
+    current_user: CurrentUserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Endpoint para actualizar el flag de un resultado.
+    # Restricciones: Nivel 2 (líder) solo de su grupo, Nivel 3 (RRHH) NO puede.
+    service = ResultService(db)
+    
+    # Valida que el usuario tenga permiso para actualizar el flag
+    if current_user.rank_level == 3:
+        # RRHH NO puede modificar el flag
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="El personal de RRHH no puede modificar el flag de resultados"
+        )
+    elif current_user.rank_level != 2:
+        # Solo nivel 2 (líderes) pueden modificar el flag
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para actualizar el flag de resultados. Solo líderes pueden hacer esto."
+        )
+    
+    # Obtiene el resultado a actualizar
+    result = service.get_result_by_id(result_id)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resultado no encontrado")
+    
+    # Valida que el líder solo puede actualizar el flag de resultados de su grupo
+    if result.id_group != current_user.id_group:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo puedes actualizar el flag de resultados de tu grupo"
+        )
+    
+    # Actualiza el flag
+    updated_result = service.update_result_flag(result_id, payload.flag)
+    return updated_result
