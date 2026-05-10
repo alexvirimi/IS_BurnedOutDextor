@@ -31,6 +31,12 @@ export interface Question {
   psicometric_variable: string;
 }
 
+export interface QuestionSurveyRelation {
+  id: string; // relation ID (used for DELETE)
+  id_survey: string;
+  id_question: string;
+}
+
 export interface SurveyWithQuestions {
   id: string;
   name: string;
