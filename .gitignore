@@ -6,6 +6,7 @@ __pycache__/
 env/
 venv/
 *.env
+.venv
 
 # Docker
 *.log
@@ -28,7 +29,3 @@ temp-docs/
 init_db.py
 app/config.py
 test.db
-
-# react
-node_modules/
-.next/
