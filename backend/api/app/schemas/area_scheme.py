@@ -1,3 +1,5 @@
+# Esquemas para gestionar áreas de la empresa.
+
 from pydantic import BaseModel
 from uuid import UUID
 from fastapi import Form #Debes importar esta cosa bonita de aqui
@@ -13,6 +15,7 @@ class AreaCreate (BaseModel):
         #Idk why pero se debe hacer pip install python-multipart para que funcione el Form en FastAPI
 
 class AreaResponse(BaseModel):
+    # Respuesta de información de área
     id: UUID
-    name: str        
+    name: str
     model_config = {"from_attributes": True} 

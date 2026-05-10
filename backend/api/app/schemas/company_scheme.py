@@ -1,10 +1,13 @@
+# Esquemas para gestionar información empresarial de trabajadores.
+
 from fastapi import Form
 from pydantic import BaseModel
 from uuid import UUID
 from datetime import date 
 
 
-class CompanyCreate (BaseModel):                # Crea los detalles empresariales de un empleado
+class CompanyCreate(BaseModel):
+    # Información empresarial de un empleado
     id_worker: UUID
     assigned_tasks: int
     completed_tasks: int
@@ -35,13 +38,14 @@ class CompanyCreate (BaseModel):                # Crea los detalles empresariale
         )
 
 class CompanyResponse(BaseModel):
+    # Respuesta con información empresarial completa
     id: UUID
     id_worker: UUID
     assigned_tasks: int
     completed_tasks: int
-    absences: int  
-    employee_calls: int  
-    worker_type: str  
+    absences: int
+    employee_calls: int
+    worker_type: str
     location: str
     start_date: date
-    model_config = {"from_attributes": True}    # devuelve toda la información (id y nombre) de un rango
+    model_config = {"from_attributes": True}

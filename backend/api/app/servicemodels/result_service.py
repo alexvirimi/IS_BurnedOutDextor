@@ -1,3 +1,5 @@
+# Servicio para gestionar resultados de encuestas.
+
 from app.controllers.cr_controller import UniversalRepository as ur
 from app.dbmodels import Result
 from sqlalchemy.orm import Session
@@ -5,21 +7,30 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from app.dbmodels import Group, Worker, Area, Surveys
 
-#En la tabla area solo se pueden realizar las lecturas de la misma.
 class ResultService:
+    # CRUD para resultados de encuestas con filtrado por rol
     def __init__(self, db: Session):
         self.repo = ur(Result, db)
         self.db = db         
 
     def get_results(self):
-        return self.repo.get_all()       
+        # Obtener todos los resultados
+        return self.repo.get_all()
 
     def get_result_by_id(self, id: UUID):
+        # Obtener resultado por ID
         return self.repo.get_by_id(id)
+    
+    def get_results_by_worker(self, worker_id: UUID):
+        # Obtener resultados de un trabajador (acceso personal)
+        return self.db.query(Result).filter(Result.id_worker == worker_id).all()
+    
+    def get_results_by_group(self, group_id: UUID):
+        # Obtener resultados de grupo (líder puede ver)
+        return self.db.query(Result).filter(Result.id_group == group_id).all()
 
-    def create_result(self, data: dict): 
-        #En este create se hace la validación de que existan el grupo, el trabajador, el área y la encuesta antes de crear el resultado, porque si no existen no se puede crear el resultado
-        #si se intenta crear un resultado con un grupo, trabajador, área o encuesta que no existe, se lanza una excepción con el mensaje de que no existe.
+    def create_result(self, data: dict):
+        # Crear resultado con validaciones de existencia
         group = ur(Group, self.db).get_by_id(data["id_group"])
         if not group:
             raise HTTPException(
@@ -43,5 +54,5 @@ class ResultService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="La encuesta no existe"
-            )    
-        return self.repo.create(data)    
+            )
+        return self.repo.create(data)

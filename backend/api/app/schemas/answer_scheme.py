@@ -1,3 +1,5 @@
+# Esquemas para gestionar respuestas de encuestas.
+
 from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import date
@@ -19,6 +21,7 @@ class AnswerCreate (BaseModel):
 
 
 class AnswerResponse(BaseModel):
+    # Respuesta de una encuesta completada
     id: UUID
     id_worker: UUID
     id_group: UUID
