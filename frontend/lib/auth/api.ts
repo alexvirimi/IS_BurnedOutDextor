@@ -10,10 +10,10 @@ export interface LoginPayload {
 }
 
 export interface LoginResponse {
-  auth_user_id: string;
   worker_id: string;
   rank_level: 1 | 2 | 3;
   rank_name: string;
+  token: string; // add this
 }
 
 // ─── Core fetch wrapper ───────────────────────────────────────────────────────

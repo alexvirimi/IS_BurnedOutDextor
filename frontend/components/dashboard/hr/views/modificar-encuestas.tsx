@@ -237,14 +237,14 @@ export function HRModificarEncuestas() {
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
-  if (loadingList) {
-    return (
-      <div className="p-8 flex items-center gap-3 text-muted-foreground">
-        <Loader2 className="animate-spin w-5 h-5" />
-        <span className="font-sans text-sm">Cargando encuestas...</span>
-      </div>
-    );
-  }
+  // if (loadingList) {
+  //   return (
+  //     <div className="p-8 flex items-center gap-3 text-muted-foreground">
+  //       <Loader2 className="animate-spin w-5 h-5" />
+  //       <span className="font-sans text-sm">Cargando encuestas...</span>
+  //     </div>
+  //   );
+  // }
 
   if (listError) {
     return (
@@ -293,10 +293,19 @@ export function HRModificarEncuestas() {
       </div>
 
       <div className="space-y-3 mb-10">
-        {activeSurveys.length === 0 && (
-          <p className="text-muted-foreground text-sm font-sans">
-            No hay encuestas activas.
-          </p>
+        {loadingList ? (
+          <div className="flex-1 text-left px-4 py-3 rounded-lg border border-border">
+            <div className="p-8 flex items-center gap-3 text-muted-foreground">
+              <Loader2 className="animate-spin w-5 h-5" />
+              <span className="font-sans text-sm">Cargando encuestas...</span>
+            </div>
+          </div>
+        ) : (
+          activeSurveys.length === 0 && (
+            <p className="text-muted-foreground text-sm font-sans">
+              No hay encuestas activas.
+            </p>
+          )
         )}
         {activeSurveys.map((survey) => (
           <div key={survey.id} className="flex items-center gap-2">
@@ -349,10 +358,19 @@ export function HRModificarEncuestas() {
       </div>
 
       <div className="space-y-3">
-        {inactiveSurveys.length === 0 && (
-          <p className="text-muted-foreground text-sm font-sans">
-            No hay encuestas inactivas.
-          </p>
+        {loadingList ? (
+          <div className="flex-1 text-left px-4 py-3 rounded-lg border border-border">
+            <div className="p-8 flex items-center gap-3 text-muted-foreground">
+              <Loader2 className="animate-spin w-5 h-5" />
+              <span className="font-sans text-sm">Cargando encuestas...</span>
+            </div>
+          </div>
+        ) : (
+          inactiveSurveys.length === 0 && (
+            <p className="text-muted-foreground text-sm font-sans">
+              No hay encuestas activas.
+            </p>
+          )
         )}
         {inactiveSurveys.map((survey) => (
           <div
