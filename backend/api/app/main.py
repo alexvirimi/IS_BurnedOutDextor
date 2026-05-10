@@ -19,22 +19,19 @@ from app.routes.surveys_cr_service import router as survey_router
 from app.routes.survey_assignment_service import router as survey_assignment_router
 from app.routes.workers_cr_service import router as worker_router
 from app.routes.auth_service import router as auth_router
-
-auth_scheme = APIKeyHeader(
-    name="auth-user-id",
-    description="ID del usuario autenticado (obtenido del /login)",
-    auto_error=False 
-)
+from fastapi.security import OAuth2PasswordBearer
 
 app = FastAPI(
     title="BurnedOutDextor API",
-    description="API para el proyecto BurnedOutDextor. Gestiona encuestas, preguntas, respuestas, trabajadores, empresas, áreas, grupos, rangos y resultados.",
+    description="API para el proyecto BurnedOutDextor.",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+
     swagger_ui_init_oauth={
         "usePkceWithAuthorizationCodeGrant": True,
+    },
+
+    swagger_ui_parameters={
+        "persistAuthorization": True
     }
 )
 

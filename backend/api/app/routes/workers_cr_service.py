@@ -33,7 +33,6 @@ def read_worker_details(worker_id: UUID, db: Session = Depends(get_db)):
         "last_names": worker.last_names,
         "age": worker.age,
         "gender": worker.gender,
-        "flag": worker.flag,
         "id_rank": worker.id_rank,
         "id_group": worker.id_group,
         "rank": worker.rank.rank_name if worker.rank else None,

@@ -15,8 +15,7 @@ class CompanyService:
         return self.repo.get_all()
     
     def get_worker_info(self, id: UUID):
-        # Obtener información completa de un trabajador
-        return self.repo.get_by_id(id)
+        return self.repo.get_by_worker_or_company_id(id)
     
     def create_worker_info(self, data: dict):
         # Crear información de trabajador

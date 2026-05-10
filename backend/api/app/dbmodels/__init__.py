@@ -10,7 +10,7 @@ from .answer import Answer
 from .area import Area
 from .result import Result
 from .auth_user import AuthUser
-from .survey_assignments import SurveyGroupAssignment, SurveyAreaAssignment, SurveyWorkerAssignment
+from .survey_assignments import SurveyWorkerAssignment
 
 __all__ = [
     "Base",

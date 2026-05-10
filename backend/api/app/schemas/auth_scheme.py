@@ -50,15 +50,11 @@ class LoginResponse(BaseModel):
     worker_id: UUID
     rank_level: int
     rank_name: str
-    auth_user_id: UUID
-
 
 class CurrentUserData(BaseModel):
-    #Esquema que representa los datos del usuario actual autenticado.#
-    auth_user_id: UUID
     worker_id: UUID
     username: str
+    id_group: UUID
     rank_level: int
     rank_name: str
-    id_group: UUID
     model_config = {"from_attributes": True}

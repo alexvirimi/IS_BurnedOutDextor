@@ -16,13 +16,19 @@ def read_workers_info(db: Session = Depends(get_db)):
     service = CompanyService(db)
     return service.get_workers_info()
 
-@router.get("/{worker_info_id}", response_model=CompanyResponse)
 # Obtiene todos los detalles de un trabajador dada la id de sus detalles
-def read_worker_info(worker_info_id: UUID, db: Session = Depends(get_db)):
+@router.get("/{identifier}", response_model=CompanyResponse)
+def read_worker_info(identifier: UUID, db: Session = Depends(get_db)):
     service = CompanyService(db)
-    company = service.get_worker_info(worker_info_id)
+
+    company = service.get_worker_info(identifier)
+
     if not company:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Detalles de trabajador no encontrados")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Detalles de trabajador no encontrados"
+        )
+
     return company
 
 @router.post("/", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
