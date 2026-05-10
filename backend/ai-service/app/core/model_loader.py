@@ -1,27 +1,52 @@
-# app/core/model_loader.py
 import joblib
-import os
+import pandas as pd
+import logging
+from pathlib import Path
+from typing import Tuple, Dict
 
-BASE = os.path.join(os.path.dirname(__file__), "../../models")
-
+logger = logging.getLogger(__name__)
 
 class ModelLoader:
-    _pipeline = None
-    _labels = None
-    _encoder = None
+    _instance = None
 
-    @classmethod
-    def load(cls):
-        cls._pipeline = joblib.load(f"{BASE}/burnout_pipeline.pkl")
-        cls._labels = joblib.load(f"{BASE}/burnout_labels.pkl")
-        cls._encoder = joblib.load(f"{BASE}/burnout_encoder.pkl")
-        print("Modelos cargados correctamente")
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ModelLoader, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
 
-    @classmethod
-    def get_pipeline(cls): return cls._pipeline
+    def __init__(self):
+        if self._initialized: return
+        
+        # Ruta a los modelos (ajustable por variable de entorno)
+        self.base_path = Path(__file__).resolve().parent.parent.parent / "models"
+        self._load_artifacts()
+        self._initialized = True
 
-    @classmethod
-    def get_labels(cls): return cls._labels
+    def _load_artifacts(self):
+        try:
+            self.pipeline = joblib.load(self.base_path / "burnout_pipeline.pkl")
+            self.class_names = joblib.load(self.base_path / "burnout_labels.pkl")
+            logger.info("Modelos de Burnout cargados correctamente.")
+        except Exception as e:
+            logger.error(f"Error cargando modelos: {e}")
+            raise RuntimeError(e)
 
-    @classmethod
-    def get_encoder(cls): return cls._encoder
+    def predict(self, data: dict) -> Tuple[str, float, Dict[str, float]]:
+        # Convertimos el diccionario a DataFrame para el pipeline
+        df = pd.DataFrame([data])
+        
+        # Obtenemos predicción y probabilidades (tu lógica de predict_burnout.py)
+        proba = self.pipeline.predict_proba(df)[0]
+        max_idx = proba.argmax()
+        
+        predicted_class = self.class_names[max_idx]
+        confidence = float(proba[max_idx])
+        
+        # Mapa de probabilidades por clase
+        prob_map = {self.class_names[i]: float(proba[i]) for i in range(len(self.class_names))}
+        
+        return predicted_class, confidence, prob_map
+
+# Instancia única para toda la aplicación
+ml_loader = ModelLoader()
