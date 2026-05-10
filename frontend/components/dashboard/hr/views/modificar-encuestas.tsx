@@ -37,7 +37,7 @@ export function HRModificarEncuestas() {
 
   // ── Survey detail modal ───────────────────────────────────────────────────────
   const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
-  const [modalMode, setModalMode] = useState<"active" | "inactive">("active");
+  const [modalMode, setModalMode] = useState<"active" | "finalizada">("active");
   const [linkedQuestions, setLinkedQuestions] = useState<Question[]>([]);
   const [linkedRelations, setLinkedRelations] = useState<
     QuestionSurveyRelation[]
@@ -50,7 +50,7 @@ export function HRModificarEncuestas() {
   const [editName, setEditName] = useState("");
   const [editAperture, setEditAperture] = useState("");
   const [editFinishing, setEditFinishing] = useState("");
-  const [savingHeader, setSavingHeader] = useState(false);
+  const [savingActiveHeader, setSavingActiveHeader] = useState(false);
   const [headerSaved, setHeaderSaved] = useState(false);
 
   // ── Question management inside modal ─────────────────────────────────────────
@@ -119,7 +119,7 @@ export function HRModificarEncuestas() {
 
   const handleOpenSurvey = async (
     survey: Survey,
-    mode: "active" | "inactive" = "active",
+    mode: "active" | "finalizada" = "active",
   ) => {
     setSelectedSurvey(survey);
     setModalMode(mode);
@@ -170,9 +170,9 @@ export function HRModificarEncuestas() {
 
   // ─── Save edited name / dates ─────────────────────────────────────────────────
 
-  const handleSaveHeader = async () => {
+  const handleFinalizedSurvey = async () => {
     if (!selectedSurvey) return;
-    setSavingHeader(true);
+    setSavingActiveHeader(true);
     setDetailError(null);
     try {
       await apiPatch(`/survey/${selectedSurvey.id}`, {
@@ -210,7 +210,51 @@ export function HRModificarEncuestas() {
         err instanceof Error ? err.message : "Error guardando cambios",
       );
     } finally {
-      setSavingHeader(false);
+      setSavingActiveHeader(false);
+    }
+  };
+
+  const handleSaveHeader = async () => {
+    if (!selectedSurvey) return;
+    setSavingActiveHeader(true);
+    setDetailError(null);
+    try {
+      await apiPatch(`/survey/${selectedSurvey.id}`, {
+        name: editName.trim(),
+        aperture_date: editAperture,
+        finishing_date: editFinishing,
+      });
+      // Update local list so the row reflects the new name/dates immediately
+      setSurveys((prev) =>
+        prev.map((s) =>
+          s.id === selectedSurvey.id
+            ? {
+                ...s,
+                name: editName.trim(),
+                aperture_date: editAperture,
+                finishing_date: editFinishing,
+              }
+            : s,
+        ),
+      );
+      setSelectedSurvey((prev) =>
+        prev
+          ? {
+              ...prev,
+              name: editName.trim(),
+              aperture_date: editAperture,
+              finishing_date: editFinishing,
+            }
+          : prev,
+      );
+      setHeaderSaved(true);
+      setTimeout(() => setHeaderSaved(false), 2000);
+    } catch (err) {
+      setDetailError(
+        err instanceof Error ? err.message : "Error guardando cambios",
+      );
+    } finally {
+      setSavingActiveHeader(false);
     }
   };
 
@@ -283,7 +327,9 @@ export function HRModificarEncuestas() {
     setDeleting(true);
     setDeleteError(null);
     try {
-      // Optimistic local update: mark survey as inactive
+      await apiPatch(`/survey/${surveyToDelete.id}`, {
+        status: "finalizada",
+      });
       setSurveys((prev) =>
         prev.map((s) =>
           s.id === surveyToDelete.id ? { ...s, status: "finalizada" } : s,
@@ -440,7 +486,7 @@ export function HRModificarEncuestas() {
         {inactiveSurveys.map((survey) => (
           <button
             key={survey.id}
-            onClick={() => handleOpenSurvey(survey, "inactive")}
+            onClick={() => handleOpenSurvey(survey, "finalizada")}
             className="w-full text-left px-4 py-3 text-white rounded-lg bg-accent text-foreground hover:opacity-90 transition-opacity"
           >
             <span>{survey.name}</span>
@@ -473,6 +519,7 @@ export function HRModificarEncuestas() {
                   className="w-full text-2xl font-bold text-foreground bg-transparent border-b-2 border-foreground/20 focus:border-primary focus:outline-none pb-1 font-heading uppercase"
                   style={{ fontFamily: "var(--font-heading)" }}
                 />
+                {/* Change Date and Save Button */}
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col gap-0.5 flex-1">
                     <span className="text-xs text-muted-foreground font-sans">
@@ -499,14 +546,14 @@ export function HRModificarEncuestas() {
                   </div>
                   <button
                     onClick={handleSaveHeader}
-                    disabled={savingHeader || !editName.trim()}
+                    disabled={savingActiveHeader || !editName.trim()}
                     className={`mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0 disabled:opacity-50 ${
                       headerSaved
                         ? "bg-green-100 text-green-700"
                         : `${M.button}`
                     }`}
                   >
-                    {savingHeader ? (
+                    {savingActiveHeader ? (
                       <Loader2 size={13} className="animate-spin" />
                     ) : headerSaved ? (
                       <>
@@ -583,7 +630,7 @@ export function HRModificarEncuestas() {
                       onClick={() => handleRemoveQuestion(question)}
                       disabled={savingQuestion === question.id}
                       className={`ml-3 flex-shrink-0 w-7 h-7 rounded-full border-2 border-red-300 flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40 ${
-                        modalMode === "inactive" ? "invisible" : ""
+                        modalMode === "finalizada" ? "invisible" : ""
                       }`}
                       title="Desvincular pregunta"
                     >

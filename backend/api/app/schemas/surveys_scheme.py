@@ -38,7 +38,7 @@ class SurveyUpdate(BaseModel):
     name: Optional[str] = None
     aperture_date: Optional[date] = None
     finishing_date: Optional[date] = None
-    status: Optional[Literal["Activo", "Inactivo"]] = None
+    status: Optional[Literal["activa", "finalizada"]] = None
 
     @field_validator("name")
     @classmethod
