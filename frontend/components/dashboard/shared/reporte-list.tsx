@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { DownloadIcon, FilterIcon, SearchIcon } from "@/components/icons";
+import { BUTTONS_COLORS } from "@/lib/styles/buttons-colors";
+
+// Main view buttons → hr palette (#8795C7)
+const C = BUTTONS_COLORS.hr;
+const M = BUTTONS_COLORS.hrModal;
 
 export interface Reporte {
   id: number;
@@ -41,7 +46,7 @@ export function ReporteList({
         </h2>
 
         <div className="flex items-center gap-2">
-          <button className="p-2 border border-foreground/30 rounded-lg hover:bg-secondary transition-colors">
+          <button className="${C.button} p-2 border border-foreground/30 rounded-lg hover:bg-secondary transition-colors">
             <FilterIcon className="w-4 h-4 text-foreground" />
           </button>
 
@@ -71,8 +76,8 @@ export function ReporteList({
               onClick={() => onSelectReporte?.(reporte)}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
                 isSelected
-                  ? "bg-accent text-foreground"
-                  : "bg-background border border-foreground/30 hover:bg-secondary"
+                  ? `${C.button} text-foreground`
+                  : "border border-foreground/30 hover:bg-secondary"
               }`}
             >
               <span className="font-medium text-foreground">{reporteName}</span>

@@ -76,8 +76,11 @@ def login(payload: LoginRequest = Depends(LoginRequest.as_form), db: Session = D
     return response
 
 
-@router.post("/logout")
-def logout(response: Response, current_user: CurrentUserData = Depends(get_current_user)):
+@router.post("/logout", status_code=status.HTTP_200_OK)
+def logout(
+    response: Response,
+    current_user: CurrentUserData = Depends(get_current_user),
+):
     response.delete_cookie("access_token", path="/")
     return {"message": "Sesión cerrada exitosamente"}
 

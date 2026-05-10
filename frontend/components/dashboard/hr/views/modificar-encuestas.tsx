@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { Filter, Search, X, Trash2 } from "lucide-react";
+import { BUTTONS_COLORS } from "@/lib/styles/buttons-colors";
+
+// Main view buttons → hr palette (#8795C7)
+const C = BUTTONS_COLORS.hr;
+// Modal buttons → hrModal palette (#E0D7F9)
+const M = BUTTONS_COLORS.hrModal;
 
 interface EncuestaActiva {
   id: number;
@@ -28,7 +34,6 @@ export function HRModificarEncuestas() {
   const [encuestasInactivas, setEncuestasInactivas] = useState<
     EncuestaInactiva[]
   >([]);
-
   const [selectedEncuesta, setSelectedEncuesta] =
     useState<EncuestaActiva | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -49,12 +54,10 @@ export function HRModificarEncuestas() {
 
   const handleConfirmDelete = () => {
     if (encuestaToDelete) {
-      // Move to inactive
       setEncuestasInactivas([
         ...encuestasInactivas,
         { id: encuestaToDelete.id, nombre: encuestaToDelete.nombre },
       ]);
-      // Remove from active
       setEncuestasActivas(
         encuestasActivas.filter((e) => e.id !== encuestaToDelete.id),
       );
@@ -65,7 +68,7 @@ export function HRModificarEncuestas() {
 
   return (
     <div className="p-8">
-      {/* Encuestas Activas Section */}
+      {/* ── Encuestas activas ─────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-4">
         <h2
           className="text-2xl font-bold text-foreground"
@@ -74,8 +77,9 @@ export function HRModificarEncuestas() {
           ENCUESTAS
         </h2>
         <div className="flex items-center gap-2">
-          <button className="p-2 border border-foreground/30 rounded-lg hover:bg-secondary transition-colors">
-            <Filter size={20} className="text-foreground" />
+          {/* Filter button — hr palette */}
+          <button className={`p-2 rounded-lg transition-colors ${C.button}`}>
+            <Filter size={20} />
           </button>
           <div className="relative">
             <Search
@@ -91,16 +95,17 @@ export function HRModificarEncuestas() {
         </div>
       </div>
 
-      {/* Encuestas Activas List */}
+      {/* Encuesta list — hr palette */}
       <div className="space-y-3 mb-10">
         {encuestasActivas.map((encuesta) => (
           <div key={encuesta.id} className="flex items-center gap-2">
             <button
               onClick={() => handleSelectEncuesta(encuesta)}
-              className="flex-1 text-left px-4 py-3 border border-foreground/30 rounded-lg bg-background text-foreground hover:bg-secondary transition-colors"
+              className={`flex-1 text-left px-4 py-3 rounded-lg transition-colors ${C.listItem}`}
             >
               {encuesta.nombre}
             </button>
+            {/* Delete — destructive, intentionally kept red for clarity */}
             <button
               onClick={(e) => handleDeleteClick(e, encuesta)}
               className="p-3 border border-red-300 rounded-lg bg-background text-red-500 hover:bg-red-50 transition-colors"
@@ -112,7 +117,7 @@ export function HRModificarEncuestas() {
         ))}
       </div>
 
-      {/* Encuestas Inactivas Section */}
+      {/* ── Encuestas inactivas ───────────────────────────────────── */}
       <div className="flex items-center justify-between mb-4">
         <h2
           className="text-2xl font-bold text-foreground"
@@ -121,8 +126,8 @@ export function HRModificarEncuestas() {
           ENCUESTAS INACTIVAS
         </h2>
         <div className="flex items-center gap-2">
-          <button className="p-2 border border-foreground/30 rounded-lg hover:bg-secondary transition-colors">
-            <Filter size={20} className="text-foreground" />
+          <button className={`p-2 rounded-lg transition-colors ${C.button}`}>
+            <Filter size={20} />
           </button>
           <div className="relative">
             <Search
@@ -138,7 +143,6 @@ export function HRModificarEncuestas() {
         </div>
       </div>
 
-      {/* Encuestas Inactivas List */}
       <div className="space-y-3">
         {encuestasInactivas.map((encuesta) => (
           <div
@@ -150,13 +154,14 @@ export function HRModificarEncuestas() {
         ))}
       </div>
 
-      {/* View Modal */}
+      {/* ── View modal ────────────────────────────────────────────── */}
       {showModal && selectedEncuesta && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+            {/* Modal close — hrModal palette */}
             <button
               onClick={() => setShowModal(false)}
-              className="absolute top-4 right-4 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
+              className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${M.button}`}
             >
               <X size={18} />
             </button>
@@ -182,16 +187,17 @@ export function HRModificarEncuestas() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* ── Delete confirmation modal ─────────────────────────────── */}
       {showDeleteModal && encuestaToDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-xl p-6 w-full max-w-md relative">
+            {/* Modal close — hrModal palette */}
             <button
               onClick={() => {
                 setShowDeleteModal(false);
                 setEncuestaToDelete(null);
               }}
-              className="absolute top-4 right-4 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
+              className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${M.button}`}
             >
               <X size={18} />
             </button>
@@ -217,15 +223,17 @@ export function HRModificarEncuestas() {
               </p>
 
               <div className="flex gap-3">
+                {/* Cancel — hrModal palette */}
                 <button
                   onClick={() => {
                     setShowDeleteModal(false);
                     setEncuestaToDelete(null);
                   }}
-                  className="flex-1 py-3 border border-foreground/30 rounded-lg text-foreground font-medium hover:bg-secondary transition-colors"
+                  className={`flex-1 py-3 rounded-lg font-medium transition-colors ${M.button}`}
                 >
                   Cancelar
                 </button>
+                {/* Destructive confirm — intentionally kept red */}
                 <button
                   onClick={handleConfirmDelete}
                   className="flex-1 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"

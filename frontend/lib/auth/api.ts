@@ -59,10 +59,6 @@ async function postForm<T>(
 // ─── Auth endpoints ───────────────────────────────────────────────────────────
 
 export const authApi = {
-  /**
-   * POST /auth/login
-   * Returns session data including auth_user_id and rank_level.
-   */
   login(payload: LoginPayload): Promise<LoginResponse> {
     return postForm<LoginResponse>("/auth/login", {
       username: payload.username,
@@ -70,11 +66,10 @@ export const authApi = {
     });
   },
 
-  /**
-   * POST /auth/logout
-   * Requires the auth-user-id header.
-   */
-  logout(authUserId: string): Promise<void> {
-    return postForm<void>("/auth/logout", {}, authUserId);
+  logout(): Promise<void> {
+    return fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      credentials: "include", // sends the HttpOnly cookie automatically
+    }).then(() => undefined);
   },
 };

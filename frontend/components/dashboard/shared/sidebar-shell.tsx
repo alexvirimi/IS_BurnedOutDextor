@@ -1,7 +1,9 @@
 "use client";
 
-import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { BudLogo } from "@/components/icons";
+import { useAuth } from "@/lib/auth/context";
+import { authApi } from "@/lib/auth/api";
 
 interface BurnoutRiskCardProps {
   label?: string;
@@ -31,6 +33,20 @@ interface SidebarShellProps {
 }
 
 export function SidebarShell({ userName, children }: SidebarShellProps) {
+  const { session, logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout(); // no argument needed
+    } catch {
+      // always clear client state regardless
+    } finally {
+      logout();
+      router.push("/login");
+    }
+  };
+
   return (
     <aside className="w-72 h-screen bg-background flex flex-col border-r border-border fixed left-0 top-0 overflow-y-auto">
       {/* User Profile */}
@@ -46,8 +62,18 @@ export function SidebarShell({ userName, children }: SidebarShellProps) {
       <div className="flex-1" />
 
       {/* Burnout risk card */}
-      <div className="px-6 mb-6">
+      <div className="px-6 mb-4">
         <BurnoutRiskCard />
+      </div>
+
+      {/* Log Out button */}
+      <div className="px-6 mb-4">
+        <button
+          onClick={handleLogout}
+          className="w-full text-left px-4 py-3 rounded-lg font-sans text-sm transition-colors bg-transparent border border-border text-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+        >
+          Cerrar sesión
+        </button>
       </div>
 
       {/* Logo */}
@@ -128,7 +154,7 @@ export function SidebarExpandable({
         </svg>
       </button>
       {isExpanded && (
-        <div className="mt-1 bg-secondary rounded-lg overflow-hidden">
+        <div className="mt-1 border border-border border-foreground/30 rounded-lg overflow-hidden">
           {children}
         </div>
       )}
