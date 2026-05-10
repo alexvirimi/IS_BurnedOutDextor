@@ -80,7 +80,11 @@ export function ReporteList({
                   : "border border-foreground/30 hover:bg-secondary"
               }`}
             >
-              <span className="font-medium text-foreground">{reporteName}</span>
+              <span
+                className={`font-medium text-foreground ${isSelected ? "text-white" : ""}`}
+              >
+                {reporteName}
+              </span>
 
               <div
                 onClick={(e) => {
