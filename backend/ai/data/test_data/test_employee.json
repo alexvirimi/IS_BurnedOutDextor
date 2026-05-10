@@ -1,0 +1,15 @@
+{
+    "assigned_tasks": 18,
+    "completed_tasks": 9,
+    "absences": 7,
+    "employee_calls": 3,
+    "completion_rate": 0.5,
+    "seniority_years": 2.5,
+    "age": 34,
+    "gender_enc": 1,
+    "worker_type_enc": 0,
+    "location_enc": 1,
+    "avg_agotamiento": 4.8,
+    "avg_despersonalizacion": 4.2,
+    "eficacia_invertida": 3.9
+}

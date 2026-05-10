@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from app.schemas.question_surveys_scheme import QuestionSurveyBulkCreate
 
+
 class QuestionSurveyService:
     # CRUD para relaciones entre preguntas y encuestas
     def __init__(self, db: Session) -> None:

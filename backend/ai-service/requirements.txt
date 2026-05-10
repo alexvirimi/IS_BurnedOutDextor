@@ -1,0 +1,17 @@
+# --- ML clásico ---
+# Versiones para garantizar compatibilidad con los archivos .pkl
+scikit-learn==1.5.2
+joblib==1.5.3
+
+# --- Datos ---
+pandas>=2.0.0
+numpy>=1.26.0
+
+# --- API (FastAPI) ---
+fastapi==0.136.0
+uvicorn[standard]==0.44.0
+pydantic==2.13.1
+
+# --- Utils ---
+python-dotenv>=1.0.0
+python-multipart==0.0.9

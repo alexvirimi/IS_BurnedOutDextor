@@ -3,7 +3,8 @@
 from fastapi import Form
 from pydantic import BaseModel
 from uuid import UUID
-from datetime import date
+from datetime import date 
+
 
 class CompanyCreate(BaseModel):
     # Información empresarial de un empleado
