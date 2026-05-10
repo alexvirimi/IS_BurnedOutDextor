@@ -154,7 +154,7 @@ export function SidebarExpandable({
         </svg>
       </button>
       {isExpanded && (
-        <div className="mt-1 bg-secondary rounded-lg overflow-hidden">
+        <div className="mt-1 border border-border border-foreground/30 rounded-lg overflow-hidden">
           {children}
         </div>
       )}

@@ -20,7 +20,7 @@ export function WKRDashboard() {
         onTabChange={setActiveTab}
         userName={isLoading ? "..." : fullName}
       />
-      <main className="flex-1 ml-72 min-h-screen overflow-y-auto flex">
+      <main className="flex-1 ml-72 min-h-screen overflow-y-auto">
         {activeTab === "encuestas" ? (
           <WKREncuestasView userName={isLoading ? "..." : fullName} />
         ) : (

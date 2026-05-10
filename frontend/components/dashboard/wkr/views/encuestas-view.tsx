@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { X, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { BUTTONS_COLORS } from "@/lib/styles/buttons-colors";
+
+// Alias so every className below reads clearly
+const C = BUTTONS_COLORS.worker;
 
 interface Encuesta {
   id: number;
@@ -116,9 +120,7 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
   };
 
   const handlePrev = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-    }
+    if (currentQuestion > 0) setCurrentQuestion(currentQuestion - 1);
   };
 
   const handleClose = () => {
@@ -146,26 +148,27 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
         </p>
         <p className="text-foreground text-lg mb-12">Respira con nosotros.</p>
 
-        {/* Pending Surveys */}
+        {/* Pending surveys — list item color */}
         <div className="space-y-3 max-w-3xl">
           {encuestasPendientes.map((encuesta) => (
             <button
               key={encuesta.id}
               onClick={() => handleSelectEncuesta(encuesta)}
-              className="w-full text-left px-4 py-3 rounded-lg bg-accent text-foreground hover:bg-accent/80 transition-colors"
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${C.listItem}`}
             >
               {encuesta.nombre}
             </button>
           ))}
         </div>
 
-        {/* Survey Modal */}
+        {/* Survey modal */}
         {selectedEncuesta && !showCompletado && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-background rounded-xl p-6 w-full max-w-2xl relative">
+              {/* Close button */}
               <button
                 onClick={handleClose}
-                className="absolute top-4 right-4 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
+                className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${C.button}`}
               >
                 <X size={18} />
               </button>
@@ -182,7 +185,7 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
                 {selectedEncuesta.preguntas.length}
               </p>
 
-              {/* Progress Bar */}
+              {/* Progress bar — structural, not a button */}
               <div className="w-full h-2 bg-secondary rounded-full mb-8">
                 <div
                   className="h-full bg-primary rounded-full transition-all duration-300"
@@ -206,7 +209,7 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
                         onClick={() => handleRespuesta(value)}
                         className={`flex-1 py-4 rounded-lg border-2 transition-all ${
                           currentRespuesta === value
-                            ? "bg-primary text-primary-foreground border-primary"
+                            ? `${C.buttonActive} border-2`
                             : "border-foreground/30 text-foreground hover:border-primary"
                         }`}
                       >
@@ -226,7 +229,6 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
                 )}
               </div>
 
-              {/* Scale Labels */}
               {currentPregunta?.tipo === "escala" && (
                 <div className="flex justify-between text-sm text-muted-foreground mb-8">
                   <span>Muy en desacuerdo</span>
@@ -242,7 +244,7 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                     currentQuestion === 0
                       ? "text-muted-foreground cursor-not-allowed"
-                      : "text-foreground hover:bg-secondary"
+                      : `${C.button}`
                   }`}
                 >
                   <ChevronLeft size={20} />
@@ -254,7 +256,7 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
                   className={`flex items-center gap-2 px-6 py-2 rounded-lg transition-colors ${
                     currentRespuesta === undefined
                       ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : `${C.button}`
                   }`}
                 >
                   {currentQuestion === selectedEncuesta.preguntas.length - 1
@@ -267,12 +269,14 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
           </div>
         )}
 
-        {/* Completion Modal */}
+        {/* Completion modal */}
         {showCompletado && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-background rounded-xl p-8 w-full max-w-md text-center">
-              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
-                <Check size={32} className="text-primary-foreground" />
+              <div
+                className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${C.button}`}
+              >
+                <Check size={32} />
               </div>
               <h2
                 className="text-2xl font-bold text-foreground mb-4"
@@ -286,7 +290,7 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
               </p>
               <button
                 onClick={handleClose}
-                className="px-8 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                className={`px-8 py-3 rounded-lg transition-colors ${C.button}`}
               >
                 Cerrar
               </button>
