@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.servicemodels.answer_service import AnswerService
 from app.schemas.answer_scheme import AnswerResponse, AnswerCreate, AnswerUserCreate, BulkAnswerCreate
+from app.servicemodels.survey_assignment_service import SurveyAssignmentService
 from app.deps.auth_deps import require_rrhh, get_current_user, require_any_authenticated
 from app.schemas.auth_scheme import CurrentUserData
 from uuid import UUID
@@ -89,29 +90,21 @@ def create_bulk_answers(
     current_user: CurrentUserData = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Endpoint para responder múltiples preguntas de una encuesta de una vez.
+   
+    assignment_service = SurveyAssignmentService(db)
     
-    Espera JSON:
-    {
-      "id_survey": "uuid-de-la-encuesta",
-      "answers": [
-        {"id_question_survey": "uuid-pregunta-1", "value": 3},
-        {"id_question_survey": "uuid-pregunta-2", "value": 4},
-        ...
-      ]
-    }
+    can_respond = assignment_service.can_worker_respond_survey(
+        current_user.worker_id,
+        payload.id_survey
+    )
     
-    El sistema obtiene automáticamente:
-    - El worker_id del usuario logueado
-    - El id_group del worker
-    - El id_area del worker
+    if not can_respond:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta encuesta no te fue asignada. No puedes responderla."
+        )
     
-    Ventajas:
-    - Un solo request para toda la encuesta
-    - Más rápido y eficiente
-    - Transaccional: o se crean todas o ninguna
-    """
+
     service = AnswerService(db)
     
     # Convertir BulkAnswerItem a diccionarios para el servicio

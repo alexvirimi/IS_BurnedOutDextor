@@ -10,13 +10,13 @@ from .answer import Answer
 from .area import Area
 from .result import Result
 from .auth_user import AuthUser
+from .survey_assignments import SurveyGroupAssignment, SurveyAreaAssignment, SurveyWorkerAssignment
 
 __all__ = [
     "Base",
     "Worker",
     "Group",
     "Rank",
-    "IdentityMapping",
     "Company",
     "Surveys",
     "Question",
@@ -25,4 +25,7 @@ __all__ = [
     "Area",
     "Result",
     "AuthUser",
+    "SurveyGroupAssignment",
+    "SurveyAreaAssignment",
+    "SurveyWorkerAssignment",
 ]

@@ -16,6 +16,7 @@ from app.routes.questions_crud_service import router as question_router
 from app.routes.rank_cr_service import router as rank_router
 from app.routes.result_cr_service import router as result_router
 from app.routes.surveys_cr_service import router as survey_router
+from app.routes.survey_assignment_service import router as survey_assignment_router
 from app.routes.workers_cr_service import router as worker_router
 from app.routes.auth_service import router as auth_router
 
@@ -72,6 +73,7 @@ app.include_router(question_survey_router)
 app.include_router(rank_router)
 app.include_router(result_router)
 app.include_router(survey_router)
+app.include_router(survey_assignment_router)
 app.include_router(worker_router)
 app.include_router(auth_router)
 
