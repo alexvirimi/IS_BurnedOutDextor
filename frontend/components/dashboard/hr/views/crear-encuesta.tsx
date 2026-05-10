@@ -9,6 +9,8 @@ import {
   X,
   Check,
   Loader2,
+  Plus,
+  CalendarRange,
 } from "lucide-react";
 import { apiFetch, apiPost } from "@/lib/api/context";
 import {
@@ -40,6 +42,11 @@ export function HRCrearEncuesta() {
   const [loadingData, setLoadingData] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // New survey fields (from-scratch flow)
+  const [surveyName, setSurveyName] = useState("");
+  const [apertureDate, setApertureDate] = useState("");
+  const [finishingDate, setFinishingDate] = useState("");
+
   // Survey selection + question picking
   const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
   const [showSurveyModal, setShowSurveyModal] = useState(false);
@@ -53,6 +60,9 @@ export function HRCrearEncuesta() {
   const [loadingLinked, setLoadingLinked] = useState(false);
   const [surveySearch, setSurveySearch] = useState("");
   const [questionSearch, setQuestionSearch] = useState("");
+
+  // "Create from scratch" mode
+  const [isFromScratch, setIsFromScratch] = useState(false);
 
   // Targeting
   const [areaOpen, setAreaOpen] = useState(false);
@@ -126,26 +136,38 @@ export function HRCrearEncuesta() {
   // ─── Handlers ────────────────────────────────────────────────────────────────
 
   const handleSelectSurvey = async (survey: Survey) => {
+    setIsFromScratch(false);
     setSelectedSurvey(survey);
     setSelectedQuestionIds(new Set());
     setShowSurveyModal(true);
     setLoadingLinked(true);
 
     try {
-      // Fetch questions already linked to this survey so we can pre-check
-      // them and avoid duplicate question_survey inserts on submit.
       const data = await apiFetch<SurveyWithQuestions>(
         `/survey/${survey.id}/questions`,
       );
       const alreadyLinked = new Set(data.questions.map((q) => q.id));
       setLinkedQuestionIds(alreadyLinked);
-      // Pre-select already-linked questions so they appear checked
       setSelectedQuestionIds(new Set(alreadyLinked));
     } catch {
       setLinkedQuestionIds(new Set());
     } finally {
       setLoadingLinked(false);
     }
+  };
+
+  /** Open the question-picker modal in "from scratch" mode */
+  const handleCreateFromScratch = () => {
+    setIsFromScratch(true);
+    setSelectedSurvey(null);
+    setConfirmedSurvey(null);
+    setSelectedQuestionIds(new Set());
+    setLinkedQuestionIds(new Set());
+    setSurveyName("");
+    setApertureDate("");
+    setFinishingDate("");
+    setShowSurveyModal(true);
+    setLoadingLinked(false);
   };
 
   const toggleQuestion = (id: string) => {
@@ -157,7 +179,13 @@ export function HRCrearEncuesta() {
   };
 
   const handleConfirmSurvey = () => {
-    setConfirmedSurvey(selectedSurvey);
+    if (isFromScratch) {
+      // No backend survey object yet; we just close the modal.
+      // The name + questions will be sent on final submit.
+      setConfirmedSurvey(null);
+    } else {
+      setConfirmedSurvey(selectedSurvey);
+    }
     setShowSurveyModal(false);
   };
 
@@ -183,33 +211,59 @@ export function HRCrearEncuesta() {
   };
 
   // ─── Submit ───────────────────────────────────────────────────────────────────
-  // Only links questions that are NOT already linked to avoid duplicate inserts.
-  // Sequential loop (not Promise.all) prevents constraint violations.
 
   const handleCrearEncuesta = async () => {
-    if (!confirmedSurvey || selectedQuestionIds.size === 0) return;
+    if (isFromScratch) {
+      if (!surveyName.trim() || selectedQuestionIds.size === 0) return;
+    } else {
+      if (!confirmedSurvey || selectedQuestionIds.size === 0) return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
     setSubmitSuccess(false);
 
     try {
-      const toLink = [...selectedQuestionIds].filter(
-        (id) => !linkedQuestionIds.has(id),
-      );
-
-      for (const questionId of toLink) {
-        await apiPost("/question_survey/", {
-          id_survey: confirmedSurvey.id,
-          id_question: questionId,
+      if (isFromScratch) {
+        // 1. Create the survey first
+        const today = new Date().toISOString().split("T")[0];
+        const newSurvey = await apiPost<Survey>("/survey/", {
+          name: surveyName.trim(),
+          aperture_date: apertureDate || today,
+          finishing_date: finishingDate || today,
+          status: "Activa",
         });
+
+        // 2. Link selected questions
+        for (const questionId of selectedQuestionIds) {
+          await apiPost("/question_survey/", {
+            id_survey: newSurvey.id,
+            id_question: questionId,
+          });
+        }
+      } else {
+        // Existing survey: only link questions that are NOT already linked
+        const toLink = [...selectedQuestionIds].filter(
+          (id) => !linkedQuestionIds.has(id),
+        );
+        for (const questionId of toLink) {
+          await apiPost("/question_survey/", {
+            id_survey: confirmedSurvey!.id,
+            id_question: questionId,
+          });
+        }
       }
 
       setSubmitSuccess(true);
       // Reset form
+      setIsFromScratch(false);
       setConfirmedSurvey(null);
       setSelectedSurvey(null);
       setSelectedQuestionIds(new Set());
       setLinkedQuestionIds(new Set());
+      setSurveyName("");
+      setApertureDate("");
+      setFinishingDate("");
       setSelectedTarget("empresa");
       setSelectedArea(null);
       setSelectedGrupo(null);
@@ -223,24 +277,27 @@ export function HRCrearEncuesta() {
     }
   };
 
-  const canCreate =
-    confirmedSurvey &&
-    selectedQuestionIds.size > 0 &&
-    (selectedTarget === "empresa" ||
-      (selectedTarget === "area" && selectedArea) ||
-      (selectedTarget === "grupo" && selectedGrupo) ||
-      (selectedTarget === "trabajador" && selectedTrabajador));
+  // ─── Derived booleans ─────────────────────────────────────────────────────────
 
-  // ─── Loading / error states ───────────────────────────────────────────────────
+  const surveyChosen = isFromScratch
+    ? surveyName.trim().length > 0 && selectedQuestionIds.size > 0
+    : confirmedSurvey !== null && selectedQuestionIds.size > 0;
 
-  // if (loadingData) {
-  //   return (
-  //     <div className="p-8 flex items-center gap-3 text-muted-foreground">
-  //       <Loader2 className="animate-spin w-5 h-5" />
-  //       <span className="font-sans text-sm">Cargando datos...</span>
-  //     </div>
-  //   );
-  // }
+  const targetChosen =
+    selectedTarget === "empresa" ||
+    (selectedTarget === "area" && selectedArea) ||
+    (selectedTarget === "grupo" && selectedGrupo) ||
+    (selectedTarget === "trabajador" && selectedTrabajador);
+
+  const canCreate = surveyChosen && targetChosen;
+
+  // ─── Chosen survey label for display ─────────────────────────────────────────
+
+  const chosenLabel = isFromScratch
+    ? surveyName.trim() || "Nueva encuesta"
+    : (confirmedSurvey?.name ?? null);
+
+  // ─── Error state ──────────────────────────────────────────────────────────────
 
   if (fetchError) {
     return (
@@ -278,17 +335,64 @@ export function HRCrearEncuesta() {
         </div>
       )}
 
+      <div className="flex flex-col gap-3 space-y-3 mb-6">
+        {/* ── Survey name card ── */}
+        <div className="bg-background flex flex-col justify-center space-y-3">
+          <label className="text-2xl font-bold text-foreground font-heading">
+            {"Nombre de la encuesta".toUpperCase()}
+          </label>
+          <input
+            type="text"
+            placeholder="Ej. Encuesta de bienestar mayo 2026"
+            value={surveyName}
+            onChange={(e) => setSurveyName(e.target.value)}
+            className="px-4 py-2.5 border border-foreground/30 rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm font-sans"
+          />
+        </div>
+
+        {/* ── Date range card ── */}
+        <div className="rounded-xl bg-background flex flex-col justify-center space-y-3">
+          <label className="text-2xl font-bold text-foreground font-heading">
+            {"Período de la encuesta".toUpperCase()}
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground font-sans">
+                Apertura
+              </span>
+              <input
+                type="date"
+                value={apertureDate}
+                onChange={(e) => setApertureDate(e.target.value)}
+                className="px-4 py-2.5 border border-foreground/30 rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm font-sans"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-muted-foreground font-sans">
+                Cierre
+              </span>
+              <input
+                type="date"
+                value={finishingDate}
+                min={apertureDate || undefined}
+                onChange={(e) => setFinishingDate(e.target.value)}
+                className="px-4 py-2.5 border border-foreground/30 rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm font-sans"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── Surveys section ───────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-4">
         <h2
           className="text-2xl font-bold text-foreground"
           style={{ fontFamily: "var(--font-heading)" }}
         >
-          ENCUESTAS ANTERIORES
+          ELEGIR PREGUNTAS
         </h2>
         <div className="flex items-center gap-2">
-          <button className={`p-2 rounded-lg transition-colors`}>
-            {" "}
+          <button className="p-2 rounded-lg transition-colors">
             <Filter size={20} className="text-foreground" />
           </button>
           <div className="relative">
@@ -308,32 +412,63 @@ export function HRCrearEncuesta() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        {loadingData ? (
-          <div className="p-8 rounded-xl border-2 transition-all text-center relative">
-            <div className="p-8 flex items-center gap-3 text-muted-foreground">
-              <Loader2 className="animate-spin w-5 h-5" />
-              <span className="font-sans text-sm">Cargando datos...</span>
+        {/* ── Create-from-scratch card ── */}
+        <button
+          onClick={handleCreateFromScratch}
+          className={`p-8 rounded-xl border-2 transition-all text-center relative flex flex-col items-center justify-center gap-2 ${
+            isFromScratch
+              ? `${C.button} border-[#7485bb]`
+              : "bg-background border-dashed border-foreground/30 text-foreground hover:border-[#8795C7] hover:bg-secondary/40"
+          }`}
+        >
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
+              isFromScratch
+                ? "border-white/60 bg-white/20"
+                : "border-foreground/30"
+            }`}
+          >
+            <Plus size={22} strokeWidth={2} />
+          </div>
+          <span className="font-medium text-base leading-tight">
+            Nuevas preguntas
+          </span>
+          {isFromScratch && (
+            <div className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+              <Check size={14} className="text-primary-foreground" />
             </div>
+          )}
+        </button>
+
+        {/* Loading skeleton */}
+        {loadingData ? (
+          <div className="p-8 rounded-xl border-2 border-foreground/10 flex items-center justify-center text-muted-foreground gap-3">
+            <Loader2 className="animate-spin w-5 h-5" />
+            <span className="font-sans text-sm">Cargando datos...</span>
           </div>
         ) : (
           filteredSurveys.length === 0 && (
-            <p className="text-muted-foreground text-sm font-sans col-span-2">
+            <p className="text-muted-foreground text-sm font-sans col-span-1 flex items-center">
               No hay encuestas disponibles.
             </p>
           )
         )}
+
+        {/* Existing survey cards */}
         {filteredSurveys.map((survey) => (
           <button
             key={survey.id}
             onClick={() => handleSelectSurvey(survey)}
             className={`p-8 rounded-xl border-2 transition-all text-center relative ${
-              confirmedSurvey?.id === survey.id
+              !isFromScratch && confirmedSurvey?.id === survey.id
                 ? `${C.button} border-[#7485bb]`
                 : "bg-background border-foreground/30 text-foreground hover:border-[#8795C7]"
             }`}
           >
-            <span className="font-medium text-lg">{survey.name}</span>
-            {confirmedSurvey?.id === survey.id && (
+            <span className="font-medium text-lg">
+              Preguntas de {survey.name}
+            </span>
+            {!isFromScratch && confirmedSurvey?.id === survey.id && (
               <div className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
                 <Check size={14} className="text-primary-foreground" />
               </div>
@@ -399,7 +534,7 @@ export function HRCrearEncuesta() {
           )}
         </div>
 
-        {/* Grupo particular — filtered by selected area */}
+        {/* Grupo particular */}
         <div className="relative">
           <button
             onClick={() => {
@@ -435,7 +570,7 @@ export function HRCrearEncuesta() {
           )}
         </div>
 
-        {/* Trabajador particular — filtered by selected group */}
+        {/* Trabajador particular */}
         <div className="relative">
           <button
             onClick={() => {
@@ -470,6 +605,7 @@ export function HRCrearEncuesta() {
               {filteredWorkers.map((worker) => (
                 <button
                   key={worker.id}
+                  onClick={() => handleSelectTarget("trabajador", worker.id)}
                   className={`w-full text-left px-4 py-3 hover:bg-secondary transition-colors ${selectedTrabajador === worker.id ? "bg-[#E0D7F9]" : ""}`}
                 >
                   {worker.name} {worker.last_names}
@@ -494,8 +630,8 @@ export function HRCrearEncuesta() {
         </button>
       </div>
 
-      {/* ── Survey modal: shows questions to assign ───────────────────────── */}
-      {showSurveyModal && selectedSurvey && (
+      {/* ── Question picker modal ─────────────────────────────────────────── */}
+      {showSurveyModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col relative">
             <button
@@ -509,10 +645,14 @@ export function HRCrearEncuesta() {
               className="text-2xl font-bold text-foreground mb-1"
               style={{ fontFamily: "var(--font-heading)" }}
             >
-              {selectedSurvey.name.toUpperCase()}
+              {isFromScratch
+                ? "NUEVA ENCUESTA DESDE CERO"
+                : selectedSurvey?.name.toUpperCase()}
             </h2>
             <p className="text-sm text-muted-foreground mb-4 font-sans">
-              Selecciona las preguntas que formarán parte de esta encuesta
+              {isFromScratch
+                ? "Elige las preguntas que formarán parte de esta nueva encuesta"
+                : "Selecciona las preguntas que formarán parte de esta encuesta"}
             </p>
 
             {/* Question search */}
@@ -546,7 +686,8 @@ export function HRCrearEncuesta() {
               ) : (
                 filteredQuestions.map((question) => {
                   const isSelected = selectedQuestionIds.has(question.id);
-                  const isAlreadyLinked = linkedQuestionIds.has(question.id);
+                  const isAlreadyLinked =
+                    !isFromScratch && linkedQuestionIds.has(question.id);
                   return (
                     <button
                       key={question.id}
@@ -608,7 +749,7 @@ export function HRCrearEncuesta() {
                     : "bg-secondary text-muted-foreground cursor-not-allowed"
                 }`}
               >
-                Elegir Encuesta
+                {isFromScratch ? "Confirmar preguntas" : "Elegir Encuesta"}
               </button>
             </div>
           </div>

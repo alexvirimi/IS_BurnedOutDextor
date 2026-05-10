@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.servicemodels.surveys_service import SurveyService
-from app.schemas.surveys_scheme import SurveyResponse, SurveyCreate, SurveyWithQuestions
+from app.schemas.surveys_scheme import SurveyResponse, SurveyCreate, SurveyWithQuestions, SurveyComplete
 from uuid import UUID
 from sqlalchemy.orm import joinedload
 from app.dbmodels import Surveys, QuestionSurveys
@@ -53,6 +53,15 @@ def read_survey_with_questions(survey_id: UUID, db: Session = Depends(get_db)):
         "questions": questions
     }
     return result
+
+@router.get("/{survey_id}/complete", response_model=SurveyComplete, status_code=status.HTTP_200_OK)
+# Obtiene encuesta completa lista para responder (preguntas + opciones de respuesta).
+def read_survey_complete(survey_id: UUID, db: Session = Depends(get_db)):
+    service = SurveyService(db)
+    survey_complete = service.get_survey_complete(survey_id, db)
+    if not survey_complete:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Encuesta no encontrada")
+    return survey_complete
 
 @router.post("/", response_model=SurveyResponse, status_code=status.HTTP_201_CREATED)
 # Crea una encuesta. Solo RRHH.

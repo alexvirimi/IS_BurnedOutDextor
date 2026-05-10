@@ -42,3 +42,27 @@ class SurveyResponse(BaseModel):
     finishing_date: date
     status: str
     model_config = {"from_attributes": True}
+
+class AnswerOption(BaseModel):
+    # Opción de respuesta (escala 1-5)
+    value: int
+    label: str
+    model_config = {"from_attributes": True}
+
+class QuestionComplete(BaseModel):
+    # Pregunta con su ID de relación pregunta-encuesta para poder responder
+    id: UUID  # question_survey.id (necesario para responder)
+    question_text: str
+    psicometric_variable: str
+    model_config = {"from_attributes": True}
+
+class SurveyComplete(BaseModel):
+    # Survey + todas sus preguntas + opciones de respuesta (listo para responder)
+    id: UUID
+    name: str
+    aperture_date: date
+    finishing_date: date
+    status: str
+    questions: list[QuestionComplete]
+    answer_options: list[AnswerOption]  # Opciones comunes 1-5
+    model_config = {"from_attributes": True}

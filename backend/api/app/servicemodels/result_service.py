@@ -56,3 +56,15 @@ class ResultService:
                 detail="La encuesta no existe"
             )
         return self.repo.create(data)
+    
+    def update_result_flag(self, result_id: UUID, flag: bool):
+        # Actualizar bandera de resultado (para marcar casos especiales)
+        result = self.get_result_by_id(result_id)
+        if not result:
+            return None
+        
+        result.flag = flag
+        self.db.commit()
+        self.db.refresh(result)
+        
+        return result

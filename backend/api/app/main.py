@@ -24,7 +24,7 @@ auth_scheme = APIKeyHeader(
     description="ID del usuario autenticado (obtenido del /login)",
     auto_error=False 
 )
-# Inicializa la aplicación FastAPI
+
 app = FastAPI(
     title="BurnedOutDextor API",
     description="API para el proyecto BurnedOutDextor. Gestiona encuestas, preguntas, respuestas, trabajadores, empresas, áreas, grupos, rangos y resultados.",
@@ -32,16 +32,22 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
-        swagger_ui_init_oauth={
-        "usePkceWithAuthorizationCodeGrant": True,}
+    swagger_ui_init_oauth={
+        "usePkceWithAuthorizationCodeGrant": True,
+    }
 )
 
-origins = ["*"]
+# Explicit origins are required when allow_credentials=True.
+# Wildcards ("*") are rejected by browsers for credentialed cross-origin requests.
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+).split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,       # required so cookies are forwarded
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -73,5 +79,3 @@ app.include_router(auth_router)
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-# Forgive me Father, for I have sinned. I will now atone for my sins. - Juanca

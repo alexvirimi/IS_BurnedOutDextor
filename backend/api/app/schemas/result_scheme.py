@@ -5,6 +5,10 @@ from uuid import UUID
 from datetime import date
 from fastapi import Form
 
+class UpdateFlagRequest(BaseModel):
+    # Esquema para actualizar el flag de un resultado
+    flag: bool
+
 class ResultCreate(BaseModel):
     # Crear resultado de encuesta con score de burnout
     id_worker: UUID
@@ -26,4 +30,5 @@ class ResultResponse(BaseModel):
     id_survey: UUID
     burnout_score: str
     generation_date: date
+    flag: bool = False
     model_config = {"from_attributes": True} 
