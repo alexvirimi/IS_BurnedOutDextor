@@ -48,13 +48,14 @@ export async function apiPatch<T>(
   path: string,
   body: Record<string, string>,
 ): Promise<T> {
-  const formData = new FormData();
-  for (const [k, v] of Object.entries(body)) formData.append(k, v);
   const res = await fetch(`${API_BASE}${path}`, {
     method: "PATCH",
-    body: formData,
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(body),
     credentials: "include",
-    headers: authHeaders(),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
