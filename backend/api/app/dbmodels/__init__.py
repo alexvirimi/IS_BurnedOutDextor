@@ -11,7 +11,7 @@ from .area import Area
 from .result import Result
 from .auth_user import AuthUser
 from .survey_assignments import SurveyWorkerAssignment
-
+from .psicometric_variable import PsicometricVariable
 __all__ = [
     "Base",
     "Worker",
@@ -28,4 +28,5 @@ __all__ = [
     "SurveyGroupAssignment",
     "SurveyAreaAssignment",
     "SurveyWorkerAssignment",
+    "PsicometricVariable",
 ]

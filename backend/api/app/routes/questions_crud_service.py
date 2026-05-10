@@ -1,6 +1,5 @@
 # Módulo de endpoints para gestionar preguntas de encuestas.
 # Solo RRHH puede crear, actualizar o eliminar preguntas.
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -48,7 +47,10 @@ def create_question(
     db: Session = Depends(get_db)
 ):
     service = QuestionService(db)
-    return service.create_question(payload.model_dump())
+    try:
+        return service.create_question(payload.model_dump())
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.put("/{question_id}", response_model=QuestionResponse, status_code=status.HTTP_200_OK)
 # Actualiza una pregunta. Solo RRHH.
@@ -59,11 +61,14 @@ def update_question(
     db: Session = Depends(get_db)
 ):
     service = QuestionService(db)
-    # Use exclude_unset=True to only update fields that were provided in the request
-    question = service.update_question(question_id, payload.model_dump(exclude_unset=True))
-    if not question:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregunta no encontrada")
-    return question
+    try:
+        # Use exclude_unset=True to only update fields that were provided in the request
+        question = service.update_question(question_id, payload.model_dump(exclude_unset=True))
+        if not question:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregunta no encontrada")
+        return question
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
 # Elimina una pregunta. Solo RRHH.

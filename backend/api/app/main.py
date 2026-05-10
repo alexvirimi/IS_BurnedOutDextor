@@ -19,6 +19,7 @@ from app.routes.surveys_cr_service import router as survey_router
 from app.routes.survey_assignment_service import router as survey_assignment_router
 from app.routes.workers_cr_service import router as worker_router
 from app.routes.auth_service import router as auth_router
+from app.routes.psicometric_value_r_service import router as psicometric_variable_router
 from fastapi.security import OAuth2PasswordBearer
 
 app = FastAPI(
@@ -73,7 +74,7 @@ app.include_router(survey_router)
 app.include_router(survey_assignment_router)
 app.include_router(worker_router)
 app.include_router(auth_router)
-
+app.include_router(psicometric_variable_router)
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_dir):

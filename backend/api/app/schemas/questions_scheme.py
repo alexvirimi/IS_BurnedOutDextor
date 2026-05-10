@@ -33,7 +33,6 @@ class QuestionUpdate(BaseModel):
 class QuestionResponse(BaseModel):
     id: UUID
     text: str
-    psicometric_variable_id: UUID
     psicometric_variable: PsicometricVariableResponse
 
     model_config = {"from_attributes": True}
