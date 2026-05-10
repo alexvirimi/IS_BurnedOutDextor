@@ -11,7 +11,7 @@ import {
   Plus,
   Minus,
 } from "lucide-react";
-import { apiFetch, apiPost, apiDelete } from "@/lib/api/context";
+import { apiFetch, apiPost, apiDelete, apiPatch } from "@/lib/api/context";
 import { BUTTONS_COLORS } from "@/lib/styles/buttons-colors";
 import {
   Survey,
@@ -37,6 +37,7 @@ export function HRModificarEncuestas() {
 
   // ── Survey detail modal ───────────────────────────────────────────────────────
   const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
+  const [modalMode, setModalMode] = useState<"active" | "finalizada">("active");
   const [linkedQuestions, setLinkedQuestions] = useState<Question[]>([]);
   const [linkedRelations, setLinkedRelations] = useState<
     QuestionSurveyRelation[]
@@ -44,6 +45,13 @@ export function HRModificarEncuestas() {
   const [showModal, setShowModal] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+
+  // ── Editable header fields (active modal only) ────────────────────────────────
+  const [editName, setEditName] = useState("");
+  const [editAperture, setEditAperture] = useState("");
+  const [editFinishing, setEditFinishing] = useState("");
+  const [savingActiveHeader, setSavingActiveHeader] = useState(false);
+  const [headerSaved, setHeaderSaved] = useState(false);
 
   // ── Question management inside modal ─────────────────────────────────────────
   const [showAddQuestions, setShowAddQuestions] = useState(false);
@@ -89,13 +97,13 @@ export function HRModificarEncuestas() {
 
   const activeSurveys = surveys.filter(
     (s) =>
-      s.status.toLowerCase() !== "inactiva" &&
+      s.status.toLowerCase() !== "finalizada" &&
       s.name.toLowerCase().includes(searchActive.toLowerCase()),
   );
 
   const inactiveSurveys = surveys.filter(
     (s) =>
-      s.status.toLowerCase() === "inactiva" &&
+      s.status.toLowerCase() === "finalizada" &&
       s.name.toLowerCase().includes(searchInactive.toLowerCase()),
   );
 
@@ -109,13 +117,22 @@ export function HRModificarEncuestas() {
 
   // ─── Open survey detail ───────────────────────────────────────────────────────
 
-  const handleOpenSurvey = async (survey: Survey) => {
+  const handleOpenSurvey = async (
+    survey: Survey,
+    mode: "active" | "finalizada" = "active",
+  ) => {
     setSelectedSurvey(survey);
+    setModalMode(mode);
     setShowModal(true);
     setShowAddQuestions(false);
     setQuestionSearch("");
     setDetailError(null);
     setLoadingDetail(true);
+    setHeaderSaved(false);
+    // Seed editable fields from current survey data
+    setEditName(survey.name);
+    setEditAperture(survey.aperture_date);
+    setEditFinishing(survey.finishing_date);
 
     try {
       const data = await apiFetch<SurveyWithQuestions>(
@@ -145,9 +162,101 @@ export function HRModificarEncuestas() {
     setShowAddQuestions(false);
     setQuestionSearch("");
     setDetailError(null);
+    setEditName("");
+    setEditAperture("");
+    setEditFinishing("");
+    setHeaderSaved(false);
   };
 
-  // ─── Add question to survey ───────────────────────────────────────────────────
+  // ─── Save edited name / dates ─────────────────────────────────────────────────
+
+  const handleFinalizedSurvey = async () => {
+    if (!selectedSurvey) return;
+    setSavingActiveHeader(true);
+    setDetailError(null);
+    try {
+      await apiPatch(`/survey/${selectedSurvey.id}`, {
+        name: editName.trim(),
+        aperture_date: editAperture,
+        finishing_date: editFinishing,
+      });
+      // Update local list so the row reflects the new name/dates immediately
+      setSurveys((prev) =>
+        prev.map((s) =>
+          s.id === selectedSurvey.id
+            ? {
+                ...s,
+                name: editName.trim(),
+                aperture_date: editAperture,
+                finishing_date: editFinishing,
+              }
+            : s,
+        ),
+      );
+      setSelectedSurvey((prev) =>
+        prev
+          ? {
+              ...prev,
+              name: editName.trim(),
+              aperture_date: editAperture,
+              finishing_date: editFinishing,
+            }
+          : prev,
+      );
+      setHeaderSaved(true);
+      setTimeout(() => setHeaderSaved(false), 2000);
+    } catch (err) {
+      setDetailError(
+        err instanceof Error ? err.message : "Error guardando cambios",
+      );
+    } finally {
+      setSavingActiveHeader(false);
+    }
+  };
+
+  const handleSaveHeader = async () => {
+    if (!selectedSurvey) return;
+    setSavingActiveHeader(true);
+    setDetailError(null);
+    try {
+      await apiPatch(`/survey/${selectedSurvey.id}`, {
+        name: editName.trim(),
+        aperture_date: editAperture,
+        finishing_date: editFinishing,
+      });
+      // Update local list so the row reflects the new name/dates immediately
+      setSurveys((prev) =>
+        prev.map((s) =>
+          s.id === selectedSurvey.id
+            ? {
+                ...s,
+                name: editName.trim(),
+                aperture_date: editAperture,
+                finishing_date: editFinishing,
+              }
+            : s,
+        ),
+      );
+      setSelectedSurvey((prev) =>
+        prev
+          ? {
+              ...prev,
+              name: editName.trim(),
+              aperture_date: editAperture,
+              finishing_date: editFinishing,
+            }
+          : prev,
+      );
+      setHeaderSaved(true);
+      setTimeout(() => setHeaderSaved(false), 2000);
+    } catch (err) {
+      setDetailError(
+        err instanceof Error ? err.message : "Error guardando cambios",
+      );
+    } finally {
+      setSavingActiveHeader(false);
+    }
+  };
 
   const handleAddQuestion = async (question: Question) => {
     if (!selectedSurvey) return;
@@ -218,10 +327,12 @@ export function HRModificarEncuestas() {
     setDeleting(true);
     setDeleteError(null);
     try {
-      // Optimistic local update: mark survey as inactive
+      await apiPatch(`/survey/${surveyToDelete.id}`, {
+        status: "finalizada",
+      });
       setSurveys((prev) =>
         prev.map((s) =>
-          s.id === surveyToDelete.id ? { ...s, status: "Inactiva" } : s,
+          s.id === surveyToDelete.id ? { ...s, status: "finalizada" } : s,
         ),
       );
       setShowDeleteModal(false);
@@ -237,14 +348,14 @@ export function HRModificarEncuestas() {
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
-  if (loadingList) {
-    return (
-      <div className="p-8 flex items-center gap-3 text-muted-foreground">
-        <Loader2 className="animate-spin w-5 h-5" />
-        <span className="font-sans text-sm">Cargando encuestas...</span>
-      </div>
-    );
-  }
+  // if (loadingList) {
+  //   return (
+  //     <div className="p-8 flex items-center gap-3 text-muted-foreground">
+  //       <Loader2 className="animate-spin w-5 h-5" />
+  //       <span className="font-sans text-sm">Cargando encuestas...</span>
+  //     </div>
+  //   );
+  // }
 
   if (listError) {
     return (
@@ -293,10 +404,19 @@ export function HRModificarEncuestas() {
       </div>
 
       <div className="space-y-3 mb-10">
-        {activeSurveys.length === 0 && (
-          <p className="text-muted-foreground text-sm font-sans">
-            No hay encuestas activas.
-          </p>
+        {loadingList ? (
+          <div className="flex-1 text-left px-4 py-3 rounded-lg border border-border">
+            <div className="p-8 flex items-center gap-3 text-muted-foreground">
+              <Loader2 className="animate-spin w-5 h-5" />
+              <span className="font-sans text-sm">Cargando encuestas...</span>
+            </div>
+          </div>
+        ) : (
+          activeSurveys.length === 0 && (
+            <p className="text-muted-foreground text-sm font-sans">
+              No hay encuestas activas.
+            </p>
+          )
         )}
         {activeSurveys.map((survey) => (
           <div key={survey.id} className="flex items-center gap-2">
@@ -349,21 +469,31 @@ export function HRModificarEncuestas() {
       </div>
 
       <div className="space-y-3">
-        {inactiveSurveys.length === 0 && (
-          <p className="text-muted-foreground text-sm font-sans">
-            No hay encuestas inactivas.
-          </p>
+        {loadingList ? (
+          <div className="flex-1 text-left px-4 py-3 rounded-lg border border-border">
+            <div className="p-8 flex items-center gap-3 text-muted-foreground">
+              <Loader2 className="animate-spin w-5 h-5" />
+              <span className="font-sans text-sm">Cargando encuestas...</span>
+            </div>
+          </div>
+        ) : (
+          inactiveSurveys.length === 0 && (
+            <p className="text-muted-foreground text-sm font-sans">
+              No hay encuestas activas.
+            </p>
+          )
         )}
         {inactiveSurveys.map((survey) => (
-          <div
+          <button
             key={survey.id}
-            className="px-4 py-3 text-white rounded-lg bg-accent text-foreground"
+            onClick={() => handleOpenSurvey(survey, "finalizada")}
+            className="w-full text-left px-4 py-3 text-white rounded-lg bg-accent text-foreground hover:opacity-90 transition-opacity"
           >
             <span>{survey.name}</span>
             <span className="ml-2 text-xs opacity-60">
               {survey.aperture_date} → {survey.finishing_date}
             </span>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -379,22 +509,88 @@ export function HRModificarEncuestas() {
               <X size={18} />
             </button>
 
-            {/* Header */}
-            <h2
-              className="text-2xl font-bold text-foreground mb-1"
-              style={{ fontFamily: "var(--font-heading)" }}
-            >
-              {selectedSurvey.name.toUpperCase()}
-            </h2>
-            <p className="text-sm text-muted-foreground mb-1 font-sans">
-              {selectedSurvey.aperture_date} → {selectedSurvey.finishing_date}
-            </p>
-            <p className="text-xs text-muted-foreground mb-4 font-sans">
-              Estado:{" "}
-              <span className="font-medium text-foreground">
-                {selectedSurvey.status}
-              </span>
-            </p>
+            {/* Header — editable for active, read-only for inactive */}
+            {modalMode === "active" ? (
+              <div className="mb-4 space-y-2">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full text-2xl font-bold text-foreground bg-transparent border-b-2 border-foreground/20 focus:border-primary focus:outline-none pb-1 font-heading uppercase"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                />
+                {/* Change Date and Save Button */}
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-0.5 flex-1">
+                    <span className="text-xs text-muted-foreground font-sans">
+                      Apertura
+                    </span>
+                    <input
+                      type="date"
+                      value={editAperture}
+                      onChange={(e) => setEditAperture(e.target.value)}
+                      className="px-2 py-1 border border-foreground/20 rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-0.5 flex-1">
+                    <span className="text-xs text-muted-foreground font-sans">
+                      Cierre
+                    </span>
+                    <input
+                      type="date"
+                      value={editFinishing}
+                      min={editAperture || undefined}
+                      onChange={(e) => setEditFinishing(e.target.value)}
+                      className="px-2 py-1 border border-foreground/20 rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <button
+                    onClick={handleSaveHeader}
+                    disabled={savingActiveHeader || !editName.trim()}
+                    className={`mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0 disabled:opacity-50 ${
+                      headerSaved
+                        ? "bg-green-100 text-green-700"
+                        : `${M.button}`
+                    }`}
+                  >
+                    {savingActiveHeader ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : headerSaved ? (
+                      <>
+                        <Check size={13} /> Guardado
+                      </>
+                    ) : (
+                      "Guardar"
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground font-sans">
+                  Estado:{" "}
+                  <span className="font-medium text-foreground">
+                    {selectedSurvey.status}
+                  </span>
+                </p>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <h2
+                  className="text-2xl font-bold text-foreground mb-1"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  {selectedSurvey.name.toUpperCase()}
+                </h2>
+                <p className="text-sm text-muted-foreground mb-1 font-sans">
+                  {selectedSurvey.aperture_date} →{" "}
+                  {selectedSurvey.finishing_date}
+                </p>
+                <p className="text-xs text-muted-foreground font-sans">
+                  Estado:{" "}
+                  <span className="font-medium text-destructive">
+                    {selectedSurvey.status}
+                  </span>
+                </p>
+              </div>
+            )}
 
             {/* Error */}
             {detailError && (
@@ -433,7 +629,9 @@ export function HRModificarEncuestas() {
                     <button
                       onClick={() => handleRemoveQuestion(question)}
                       disabled={savingQuestion === question.id}
-                      className="ml-3 flex-shrink-0 w-7 h-7 rounded-full border-2 border-red-300 flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+                      className={`ml-3 flex-shrink-0 w-7 h-7 rounded-full border-2 border-red-300 flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40 ${
+                        modalMode === "finalizada" ? "invisible" : ""
+                      }`}
                       title="Desvincular pregunta"
                     >
                       {savingQuestion === question.id ? (
@@ -445,8 +643,8 @@ export function HRModificarEncuestas() {
                   </div>
                 ))}
 
-                {/* Add questions section */}
-                {showAddQuestions && (
+                {/* Add questions section — active only */}
+                {showAddQuestions && modalMode === "active" && (
                   <div className="mt-4 border-t border-border pt-4">
                     <div className="relative mb-3">
                       <Search
@@ -504,7 +702,7 @@ export function HRModificarEncuestas() {
               </div>
             )}
 
-            {/* Footer actions */}
+            {/* Footer actions — active only */}
             {!loadingDetail && (
               <div className="flex items-center justify-between pt-2 border-t border-border">
                 <span className="text-sm text-muted-foreground font-sans">
@@ -512,23 +710,25 @@ export function HRModificarEncuestas() {
                   {linkedQuestions.length !== 1 ? "s" : ""} vinculada
                   {linkedQuestions.length !== 1 ? "s" : ""}
                 </span>
-                <button
-                  onClick={() => {
-                    setShowAddQuestions((v) => !v);
-                    setQuestionSearch("");
-                  }}
-                  className={`px-5 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-1.5 ${M.button}`}
-                >
-                  {showAddQuestions ? (
-                    <>
-                      <X size={14} /> Cerrar
-                    </>
-                  ) : (
-                    <>
-                      <Plus size={14} /> Añadir preguntas
-                    </>
-                  )}
-                </button>
+                {modalMode === "active" && (
+                  <button
+                    onClick={() => {
+                      setShowAddQuestions((v) => !v);
+                      setQuestionSearch("");
+                    }}
+                    className={`px-5 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-1.5 ${M.button}`}
+                  >
+                    {showAddQuestions ? (
+                      <>
+                        <X size={14} /> Cerrar
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={14} /> Añadir preguntas
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </div>

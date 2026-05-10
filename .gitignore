@@ -29,3 +29,7 @@ temp-docs/
 init_db.py
 app/config.py
 test.db
+
+node_modules/
+.next/
+.mypy_chache

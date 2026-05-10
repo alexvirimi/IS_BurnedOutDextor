@@ -37,14 +37,17 @@ export function SidebarShell({ userName, children }: SidebarShellProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
-    try {
-      await authApi.logout(); // no argument needed
-    } catch {
-      // always clear client state regardless
-    } finally {
-      logout();
-      router.push("/login");
-    }
+    // 1. Clear client state immediately — user is logged out locally
+    //    regardless of what the server does.
+    logout(); // clears bud_session cookie + React state
+    router.push("/login");
+
+    // 2. Best-effort server call to clear the HttpOnly cookie.
+    //    Fire-and-forget: don't await, don't block navigation.
+    authApi.logout().catch(() => {
+      // Server cookie will expire naturally after max_age (1 hour).
+      // No action needed — client state is already cleared.
+    });
   };
 
   return (

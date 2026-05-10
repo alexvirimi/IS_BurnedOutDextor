@@ -31,13 +31,11 @@ export default function LoginPage() {
 
     try {
       const data = await authApi.login({ username, password });
-
-      // Persist session globally and in localStorage
       login({
-        auth_user_id: data.auth_user_id,
         worker_id: data.worker_id,
         rank_level: data.rank_level,
         rank_name: data.rank_name,
+        token: data.token, // add this to LoginResponse too
       });
 
       // Redirect — role resolved inside dashboard via context

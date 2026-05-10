@@ -138,23 +138,19 @@ def login(
     return response
 
 
-@router.post(
-    "/logout",
-    status_code=status.HTTP_200_OK
-)
-def logout(
-    response: Response,
-    current_user: CurrentUserData = Depends(get_current_user),
-):
-
+@router.post("/logout", status_code=status.HTTP_200_OK)
+def logout(response: Response):
+    """
+    Clears the access_token cookie.
+    No auth dependency — logout must work even with an expired or missing token.
+    """
     response.delete_cookie(
         key="access_token",
-        path="/"
+        path="/",
+        samesite="lax",      # must match the attributes used when setting it
+        secure=IS_PRODUCTION,
     )
-
-    return {
-        "message": "Sesión cerrada exitosamente"
-    }
+    return {"message": "Sesión cerrada exitosamente"}
 
 
 @router.get(

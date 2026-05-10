@@ -1,5 +1,7 @@
 "use client";
 
+import { setApiToken } from "@/lib/api/context";
+
 import {
   createContext,
   useContext,
@@ -17,7 +19,7 @@ interface SessionData {
   worker_id: string;
   rank_level: 1 | 2 | 3;
   rank_name: string;
-  // auth_user_id removed — the HttpOnly cookie handles authentication
+  token?: string; // raw JWT, kept in memory only
 }
 
 interface AuthContextValue {
@@ -72,20 +74,25 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionData | null>(null);
 
-  // Rehydrate from the cookie on first client render
-  useEffect(() => {
-    const stored = loadSession();
-    if (stored) setSession(stored);
-  }, []);
-
   const login = useCallback((data: SessionData) => {
-    saveSession(data); // sets the cookie the middleware reads
+    saveSession(data);
     setSession(data);
+    if (data.token) setApiToken(data.token); // inject into api helpers
   }, []);
 
   const logout = useCallback(() => {
-    clearSession(); // expires the cookie
+    clearSession();
     setSession(null);
+    setApiToken(null);
+  }, []);
+
+  // Also rehydrate token on page reload:
+  useEffect(() => {
+    const stored = loadSession();
+    if (stored) {
+      setSession(stored);
+      if (stored.token) setApiToken(stored.token);
+    }
   }, []);
 
   const role = session ? rankToRole(session.rank_level) : null;
