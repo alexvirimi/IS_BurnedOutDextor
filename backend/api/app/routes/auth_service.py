@@ -1,6 +1,7 @@
 # Módulo de endpoints de autenticación del sistema.
 # Proporciona rutas para registro, login, logout y obtener datos del usuario actual.
 
+import os
 from fastapi import APIRouter, Depends, Response, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -14,16 +15,16 @@ from core.security import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# True in production (HTTPS), False in local dev (HTTP)
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() == "production"
+
 @router.post("/register", response_model=AuthUserResponse, status_code=status.HTTP_201_CREATED)
 def register(
-    payload: AuthUserCreate = Depends(AuthUserCreate.as_form),  # ✅ Form-data
+    payload: AuthUserCreate = Depends(AuthUserCreate.as_form),
     db: Session = Depends(get_db)
 ):
-    # Registra un nuevo usuario autenticado en el sistema.
-    # Inicializa el servicio de autenticación
     auth_service = AuthUserService(db)
     
-    # Verifica que el trabajador existe
     worker_service = WorkerService(db)
     worker = worker_service.get_worker(payload.worker_id)
     if not worker:
@@ -32,17 +33,13 @@ def register(
             detail=f"El trabajador con ID {payload.worker_id} no existe"
         )
     
-    # Verifica que el username no esté en uso
     if auth_service.username_exists(payload.username):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"El username '{payload.username}' ya está en uso. Elige otro."
         )
     
-    # Crea el nuevo usuario autenticado
     new_auth_user = auth_service.register_user(payload.model_dump())
-    
-    # Retorna la información del usuario creado
     return new_auth_user
 
 
@@ -63,13 +60,14 @@ def login(payload: LoginRequest = Depends(LoginRequest.as_form), db: Session = D
         "worker_id": str(user_info["worker_id"]),
         "rank_level": user_info["rank_level"],
         "rank_name": user_info["rank_name"],
+        "auth_user_id": str(user_info["auth_user_id"]),
     })
     response.set_cookie(
         key="access_token",
         value=token,
-        httponly=True,        # JS cannot read this — blocks XSS token theft
-        secure=True,          # HTTPS only
-        samesite="strict",    # Blocks CSRF from cross-origin requests
+        httponly=True,
+        secure=IS_PRODUCTION,   # False in dev (HTTP), True in prod (HTTPS)
+        samesite="lax",         # "lax" works for both dev and prod; "strict" breaks cross-origin dev setups
         max_age=3600,
         path="/",
     )
@@ -89,5 +87,4 @@ def logout(
 def get_current_user_info(
     current_user: CurrentUserData = Depends(get_current_user)
 ):
-    # Retorna la información del usuario autenticado actual.
     return current_user
