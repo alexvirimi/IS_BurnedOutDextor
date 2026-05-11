@@ -22,7 +22,7 @@ from app.schemas.auth_scheme import (
 
 from app.deps.auth_deps import get_current_user
 
-from core.security import create_access_token
+from app.security import create_access_token
 
 
 router = APIRouter(
