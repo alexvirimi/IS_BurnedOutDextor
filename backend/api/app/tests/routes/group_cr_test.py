@@ -99,7 +99,6 @@ class TestGroupEndpoints:
             gender="M",
             id_group=group.id,
             id_rank=rank.id,
-            flag=False
         )
 
         db.add_all([rank, area, group, worker])

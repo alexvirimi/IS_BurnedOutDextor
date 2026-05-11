@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth/context";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { apiFetch } from "@/lib/api/context";
 
 interface WorkerDetails {
   name: string;
@@ -16,15 +15,11 @@ interface UseWorkerNameResult {
 }
 
 /**
- * Fetches the authenticated worker's full name.
+ * Fetches the authenticated worker's full name from /worker/{worker_id}/details.
  *
- * Strategy:
- *   1. session.worker_id is already in context from login — use it directly.
- *   2. GET /worker/{worker_id}/details with the auth-user-id header.
- *   3. Returns "name last_names" as a single string.
- *
- * Falls back to rank_name if the fetch fails, so the sidebar
- * never shows an empty string.
+ * The endpoint is public (no auth required), so no cookie or header is needed.
+ * Falls back to the rank_name stored in the session cookie if the fetch fails,
+ * so the sidebar never shows an empty string.
  */
 export function useWorkerName(): UseWorkerNameResult {
   const { session } = useAuth();
@@ -32,7 +27,6 @@ export function useWorkerName(): UseWorkerNameResult {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Nothing to fetch if there is no session
     if (!session) {
       setIsLoading(false);
       return;
@@ -42,28 +36,18 @@ export function useWorkerName(): UseWorkerNameResult {
 
     async function fetchName() {
       try {
-        // worker_id is already available from login response —
-        // no need to call /auth/me first.
-        const res = await fetch(
-          `${API_BASE}/worker/${session!.worker_id}/details`,
-          {
-            headers: {
-              "auth-user-id": session!.auth_user_id,
-            },
-          },
+        const data: WorkerDetails = await apiFetch<WorkerDetails>(
+          `/worker/${session!.worker_id}/details`,
         );
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const data: WorkerDetails = await res.json();
 
         if (!cancelled) {
           setFullName(`${data.name} ${data.last_names}`.trim());
         }
       } catch {
-        // Graceful fallback: show rank name so the sidebar is never blank
+        // Graceful fallback: show the rank name stored in the session cookie.
+        // session.rank_name is still present even though auth_user_id was removed.
         if (!cancelled) {
-          setFullName(session!.rank_name);
+          setFullName(session!.rank_name ?? "");
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -72,8 +56,6 @@ export function useWorkerName(): UseWorkerNameResult {
 
     fetchName();
 
-    // Cleanup: if the component unmounts before the fetch resolves,
-    // discard the result to avoid a state update on an unmounted component.
     return () => {
       cancelled = true;
     };

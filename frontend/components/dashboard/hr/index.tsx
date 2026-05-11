@@ -5,6 +5,7 @@ import { HRSidebar, type HRView } from "./sidebar";
 import { HRMiProgreso } from "./views/mi-progreso";
 import { HRHistoricos } from "./views/historicos";
 import { HRCrearEncuesta } from "./views/crear-encuesta";
+import { HRRealizarEncuestasView } from "./views/realizar-encuestas";
 import { HRModificarEncuestas } from "./views/modificar-encuestas";
 import { useWorkerName } from "@/hooks/useWorkerName";
 
@@ -25,6 +26,10 @@ export function HRDashboard() {
         return <HRHistoricos type="grupos" />;
       case "trabajadores":
         return <HRHistoricos type="trabajadores" />;
+      case "realizar-encuestas":
+        return (
+          <HRRealizarEncuestasView userName={isLoading ? "..." : fullName} />
+        );
       case "crear-encuesta":
         return <HRCrearEncuesta />;
       case "modificar-encuestas":

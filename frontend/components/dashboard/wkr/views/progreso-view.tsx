@@ -24,7 +24,7 @@ export function WKRProgresoView() {
   const [selectedReporte, setSelectedReporte] = useState<Reporte>(REPORTES[0]);
 
   return (
-    <div className="p-8">
+    <div className="p-8 max-w-5xl">
       <h1
         className="text-4xl font-bold text-foreground mb-8"
         style={{ fontFamily: "var(--font-heading)" }}

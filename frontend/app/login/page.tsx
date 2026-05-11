@@ -4,16 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { authApi } from "@/lib/auth/api";
-import type { UserRole } from "@/lib/auth/context";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function roleToPath(role: UserRole): string {
-  // All roles land on /dashboard; the Dashboard component reads role from context.
-  return "/dashboard";
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
+import { setApiToken } from "@/lib/api/context";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -32,16 +23,22 @@ export default function LoginPage() {
     try {
       const data = await authApi.login({ username, password });
 
-      // Persist session globally and in localStorage
+      // Store session in the JS-readable bud_session cookie and React context.
+      // access_token is kept in memory only via setApiToken — never persisted
+      // to localStorage or sessionStorage.
       login({
-        auth_user_id: data.auth_user_id,
         worker_id: data.worker_id,
         rank_level: data.rank_level,
         rank_name: data.rank_name,
+        token: data.access_token, // ← was data.token (undefined). Fixed.
       });
 
-      // Redirect — role resolved inside dashboard via context
-      router.push(roleToPath("worker")); // path is /dashboard for all roles
+      // The AuthProvider's login() calls setApiToken internally, but we also
+      // call it here directly to guarantee the token is available immediately
+      // for any request that fires before the context re-renders.
+      setApiToken(data.access_token);
+
+      router.push("/dashboard");
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Error al iniciar sesión";
@@ -60,7 +57,7 @@ export default function LoginPage() {
       }}
     >
       <div className="w-full max-w-md px-8">
-        {/* Logo — unchanged */}
+        {/* Logo */}
         <div className="flex justify-center mb-8">
           <svg
             width="150"
@@ -110,7 +107,6 @@ export default function LoginPage() {
           </svg>
         </div>
 
-        {/* Error banner */}
         {error && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-sans">
             {error}

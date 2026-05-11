@@ -48,7 +48,6 @@ class TestResultEndpoints:
             gender="M",
             id_group=group.id,
             id_rank=rank.id,
-            flag=False
         )
 
         survey = Surveys(

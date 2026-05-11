@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from .company import Company
     from .answer import Answer
     from .result import Result
+    from .survey_assignments import SurveyWorkerAssignment
 
 class Worker(Base):
     __tablename__ = 'worker'
@@ -52,3 +53,4 @@ class Worker(Base):
     answers: Mapped[list[Answer]] = relationship(back_populates='workers')
     company: Mapped[Company] = relationship(back_populates='worker')
     results: Mapped[list[Result]]= relationship (back_populates='workers')
+    survey_assignments: Mapped[list[SurveyWorkerAssignment]] = relationship(back_populates='worker', cascade='all, delete-orphan')

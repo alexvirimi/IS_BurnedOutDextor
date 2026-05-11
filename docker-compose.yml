@@ -1,14 +1,12 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: inbudex-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: inbudex
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -32,6 +30,48 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - inbudex-network
+
+  api:
+    build: ./backend/api
+    container_name: inbudex-api
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - SQLALCHEMY_ECHO=false
+      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://frontend:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - inbudex-network
+
+  # AI Service
+  ai-service:
+    build: ./backend/ai-service
+    container_name: inbudex-ai
+    ports:
+      - "8000:8000"
+    environment:
+      - API_BASE_URL=${API_BASE_URL}
+      - API_KEY=${API_KEY}
+    networks:
+      - inbudex-network
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://api:8000
+    container_name: inbudex-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
     networks:
       - inbudex-network
 

@@ -25,10 +25,15 @@ export interface Survey {
   status: string;
 }
 
+export interface PsicometricVariable {
+  id: string;
+  name: string;
+}
+
 export interface Question {
   id: string;
   text: string;
-  psicometric_variable: string;
+  psicometric_variable: PsicometricVariable | string;
 }
 
 export interface QuestionSurveyRelation {
@@ -41,4 +46,16 @@ export interface SurveyWithQuestions {
   id: string;
   name: string;
   questions: Question[];
+}
+
+/** Mirrors backend MySurveyResponse from /survey-assignment/my-surveys */
+export interface MySurveyResponse {
+  id: string;
+  name: string;
+  aperture_date: string;
+  finishing_date: string;
+  status: string;
+  assignment_id: string;
+  questions_count: number;
+  already_responded: boolean;
 }

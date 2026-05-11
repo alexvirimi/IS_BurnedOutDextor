@@ -58,6 +58,6 @@ class Answer(Base):
     created_at: Mapped[Date] = mapped_column(Date)
     
     group: Mapped[Group] = relationship(back_populates='answers')
-    workers: Mapped[Worker] = relationship(back_populates='answers')  # ← Worker, no list[Worker]
+    workers: Mapped[Worker] = relationship(back_populates='answers')  
     question_survey: Mapped[QuestionSurveys] = relationship(back_populates='answers')
     area: Mapped[Area] = relationship(back_populates='answers')

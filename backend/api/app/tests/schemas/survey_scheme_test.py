@@ -1,63 +1,129 @@
+# app/tests/services/surveys_service_test.py
+
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
-from app.schemas.surveys_scheme import (
-    SurveyCreate,
-    SurveyResponse,
-    QuestionInSurvey,
-    SurveyWithQuestions
-)
+from app.servicemodels.surveys_service import SurveyService
+
+from app.dbmodels.surveys import Surveys
 
 
-class TestSurveySchemas:
+def test_create_survey(db):
 
-    def test_survey_create(self):
+    service = SurveyService(db)
 
-        survey = SurveyCreate(
-            name="Encuesta Burnout",
-            aperture_date=date(2026, 1, 1),
-            finishing_date=date(2026, 1, 30),
-            status="Activa"
-        )
+    payload = {
+        "name": "Encuesta Burnout",
+        "aperture_date": date.today(),
+        "finishing_date": date.today() + timedelta(days=7),
+        "status": "activa"
+    }
 
-        assert survey.name == "Encuesta Burnout"
-        assert survey.status == "Activa"
+    survey = service.create_survey(payload)
 
-    def test_survey_response(self):
+    assert survey is not None
+    assert survey.name == "Encuesta Burnout"
 
-        survey = SurveyResponse(
-            id=uuid.uuid4(),
-            name="Encuesta General",
-            aperture_date=date.today(),
-            finishing_date=date.today(),
-            status="Finalizada"
-        )
 
-        assert survey.status == "Finalizada"
+def test_get_surveys(db):
 
-    def test_question_in_survey(self):
+    survey = Surveys(
+        id=uuid.uuid4(),
+        name="Encuesta General",
+        aperture_date=date.today(),
+        finishing_date=date.today() + timedelta(days=5),
+        status="activa"
+    )
 
-        question = QuestionInSurvey(
-            id=uuid.uuid4(),
-            text="¿Te sientes agotado?",
-            psicometric_variable="Burnout"
-        )
+    db.add(survey)
+    db.commit()
 
-        assert question.text == "¿Te sientes agotado?"
+    service = SurveyService(db)
 
-    def test_survey_with_questions(self):
+    surveys = service.get_surveys()
 
-        question = QuestionInSurvey(
-            id=uuid.uuid4(),
-            text="¿Te sientes agotado?",
-            psicometric_variable="Burnout"
-        )
+    assert len(surveys) >= 1
 
-        survey = SurveyWithQuestions(
-            id=uuid.uuid4(),
-            name="Encuesta Completa",
-            questions=[question]
-        )
 
-        assert len(survey.questions) == 1
-        assert survey.questions[0].psicometric_variable == "Burnout"
+def test_get_survey_by_id(db):
+
+    survey = Surveys(
+        id=uuid.uuid4(),
+        name="Encuesta TI",
+        aperture_date=date.today(),
+        finishing_date=date.today() + timedelta(days=10),
+        status="activa"
+    )
+
+    db.add(survey)
+    db.commit()
+
+    service = SurveyService(db)
+
+    found = service.get_survey(survey.id)
+
+    assert found is not None
+    assert found.id == survey.id
+
+
+def test_update_survey(db):
+
+    survey = Surveys(
+        id=uuid.uuid4(),
+        name="Encuesta Vieja",
+        aperture_date=date.today(),
+        finishing_date=date.today() + timedelta(days=5),
+        status="activa"
+    )
+
+    db.add(survey)
+    db.commit()
+
+    service = SurveyService(db)
+
+    updated = service.update_survey(
+        survey.id,
+        {
+            "name": "Encuesta Nueva",
+            "status": "finalizada"
+        }
+    )
+
+    assert updated.name == "Encuesta Nueva"
+    assert updated.status == "finalizada"
+
+
+def test_update_survey_not_found(db):
+
+    service = SurveyService(db)
+
+    updated = service.update_survey(
+        uuid.uuid4(),
+        {
+            "name": "No existe"
+        }
+    )
+
+    assert updated is None
+
+
+def test_get_survey_complete_empty(db):
+
+    survey = Surveys(
+        id=uuid.uuid4(),
+        name="Encuesta Completa",
+        aperture_date=date.today(),
+        finishing_date=date.today() + timedelta(days=10),
+        status="activa"
+    )
+
+    db.add(survey)
+    db.commit()
+
+    service = SurveyService(db)
+
+    result = service.get_survey_complete(survey.id, db)
+
+    assert result is not None
+    assert result["name"] == "Encuesta Completa"
+    assert isinstance(result["answer_options"], list)

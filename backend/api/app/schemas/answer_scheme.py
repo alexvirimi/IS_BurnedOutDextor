@@ -13,7 +13,8 @@ class AnswerCreate(BaseModel):
     id_area: UUID
     id_question_survey: UUID
     value: AnswerEnum
-    created_at: date = Field(default_factory=date.today)
+    created_at: date = Field(default_factory=date.today)  # Auto fecha yupi
+
     @classmethod
     def as_form(cls, id_worker: UUID = Form(...), id_group: UUID = Form(...), id_area: UUID = Form(...), id_question_survey: UUID = Form(...), value: AnswerEnum = Form(...)):
         return cls(id_worker=id_worker, id_group=id_group, id_area=id_area, id_question_survey=id_question_survey, value=value)

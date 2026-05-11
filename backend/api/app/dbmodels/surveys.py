@@ -14,7 +14,7 @@ from sqlalchemy.orm import (
     mapped_column,
     relationship
 )
-
+from .survey_assignments import SurveyWorkerAssignment
 from .base import Base
 
 if TYPE_CHECKING:
@@ -37,3 +37,6 @@ class Surveys(Base):
 
     question_surveys: Mapped[list[QuestionSurveys]] = relationship(back_populates='survey')
     results: Mapped[list[Result]] = relationship(back_populates='survey')
+    worker_assignments: Mapped[list[SurveyWorkerAssignment]] = relationship(
+        back_populates='survey'
+    )
