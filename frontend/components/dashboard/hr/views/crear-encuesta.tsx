@@ -153,6 +153,9 @@ export function HRCrearEncuesta() {
       setLinkedQuestionIds(new Set());
     } finally {
       setLoadingLinked(false);
+      setSurveyName(surveyName);
+      setApertureDate(apertureDate);
+      setFinishingDate(finishingDate);
     }
   };
 
@@ -309,6 +312,8 @@ export function HRCrearEncuesta() {
     );
   }
 
+  // setApertureDate(new Date().toISOString().split("T")[0]);
+
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -362,7 +367,8 @@ export function HRCrearEncuesta() {
               </span>
               <input
                 type="date"
-                value={apertureDate}
+                min={new Date().toISOString().split("T")[0]}
+                value={apertureDate || new Date().toISOString().split("T")[0]}
                 onChange={(e) => setApertureDate(e.target.value)}
                 className="px-4 py-2.5 border border-foreground/30 rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm font-sans"
               />
