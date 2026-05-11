@@ -34,6 +34,33 @@ services:
         condition: service_healthy
     networks:
       - inbudex-network
+  
+  api:
+    build: ./backend/api
+    container_name: inbudex-api
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/inbudex
+      - SQLALCHEMY_ECHO=false
+      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - inbudex-network
+
+  # AI Service  
+  ai-service:
+    build: ./backend/ai-service
+    container_name: inbudex-ai
+    ports:
+      - "8000:8000"
+    environment:
+      - API_BASE_URL=${API_BASE_URL}  # Internal container URL
+      - API_KEY=${API_KEY}  # For auth
+    networks:
+      - inbudex-network
 
 volumes:
   postgres_data:
