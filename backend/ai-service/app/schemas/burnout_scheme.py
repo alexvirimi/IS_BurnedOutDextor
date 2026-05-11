@@ -5,6 +5,7 @@ from uuid import UUID
 class WorkerInput(BaseModel):
     # Identificador único para trazabilidad entre servicios (worker.id)
     worker_id: UUID
+    survey_id: UUID
 
     # Datos laborales
     assigned_tasks: int = Field(..., ge=0)
