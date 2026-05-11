@@ -176,9 +176,9 @@ export function HRModificarEncuestas() {
     setDetailError(null);
     try {
       await apiPatch(`/survey/${selectedSurvey.id}`, {
-        name: editName.trim(),
         aperture_date: editAperture,
         finishing_date: editFinishing,
+        status: "activa",
       });
       // Update local list so the row reflects the new name/dates immediately
       setSurveys((prev) =>
@@ -186,23 +186,14 @@ export function HRModificarEncuestas() {
           s.id === selectedSurvey.id
             ? {
                 ...s,
-                name: editName.trim(),
                 aperture_date: editAperture,
                 finishing_date: editFinishing,
+                status: "activa",
               }
             : s,
         ),
       );
-      setSelectedSurvey((prev) =>
-        prev
-          ? {
-              ...prev,
-              name: editName.trim(),
-              aperture_date: editAperture,
-              finishing_date: editFinishing,
-            }
-          : prev,
-      );
+      handleCloseModal();
       setHeaderSaved(true);
       setTimeout(() => setHeaderSaved(false), 2000);
     } catch (err) {
@@ -347,15 +338,6 @@ export function HRModificarEncuestas() {
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────────
-
-  // if (loadingList) {
-  //   return (
-  //     <div className="p-8 flex items-center gap-3 text-muted-foreground">
-  //       <Loader2 className="animate-spin w-5 h-5" />
-  //       <span className="font-sans text-sm">Cargando encuestas...</span>
-  //     </div>
-  //   );
-  // }
 
   if (listError) {
     return (
@@ -579,10 +561,49 @@ export function HRModificarEncuestas() {
                 >
                   {selectedSurvey.name.toUpperCase()}
                 </h2>
-                <p className="text-sm text-muted-foreground mb-1 font-sans">
-                  {selectedSurvey.aperture_date} →{" "}
-                  {selectedSurvey.finishing_date}
-                </p>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex flex-col gap-0.5 flex-1">
+                    <span className="text-xs text-muted-foreground font-sans">
+                      Apertura
+                    </span>
+                    <input
+                      type="date"
+                      value={editAperture}
+                      onChange={(e) => setEditAperture(e.target.value)}
+                      className="px-2 py-1 border border-foreground/20 rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-0.5 flex-1">
+                    <span className="text-xs text-muted-foreground font-sans">
+                      Cierre
+                    </span>
+                    <input
+                      type="date"
+                      value={editFinishing}
+                      min={editAperture || undefined}
+                      onChange={(e) => setEditFinishing(e.target.value)}
+                      className="px-2 py-1 border border-foreground/20 rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <button
+                    onClick={handleFinalizedSurvey}
+                    className={`mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0 disabled:opacity-50 ${
+                      headerSaved
+                        ? "bg-green-100 text-green-700"
+                        : `${M.button}`
+                    }`}
+                  >
+                    {savingActiveHeader ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : headerSaved ? (
+                      <>
+                        <Check size={13} /> Guardado
+                      </>
+                    ) : (
+                      "Guardar"
+                    )}
+                  </button>
+                </div>
                 <p className="text-xs text-muted-foreground font-sans">
                   Estado:{" "}
                   <span className="font-medium text-destructive">
