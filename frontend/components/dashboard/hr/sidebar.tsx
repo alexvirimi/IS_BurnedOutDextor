@@ -13,6 +13,7 @@ export type HRView =
   | "areas"
   | "grupos"
   | "trabajadores"
+  | "realizar-encuestas"
   | "crear-encuesta"
   | "modificar-encuestas";
 
@@ -30,9 +31,11 @@ export function HRSidebar({
   const isHistoricosActive = ["areas", "grupos", "trabajadores"].includes(
     activeView,
   );
-  const isEncuestasActive = ["crear-encuesta", "modificar-encuestas"].includes(
-    activeView,
-  );
+  const isEncuestasActive = [
+    "realizar-encuestas",
+    "crear-encuesta",
+    "modificar-encuestas",
+  ].includes(activeView);
 
   const [historicosOpen, setHistoricosOpen] = useState(isHistoricosActive);
   const [encuestasOpen, setEncuestasOpen] = useState(isEncuestasActive);
@@ -83,6 +86,11 @@ export function HRSidebar({
           label="Modificar Encuestas"
           isActive={activeView === "modificar-encuestas"}
           onClick={() => onViewChange("modificar-encuestas")}
+        />
+        <SidebarSubItem
+          label="Realizar Encuestas"
+          isActive={activeView === "realizar-encuestas"}
+          onClick={() => onViewChange("realizar-encuestas")}
         />
       </SidebarExpandable>
     </SidebarShell>
