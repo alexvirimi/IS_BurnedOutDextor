@@ -39,7 +39,7 @@ class TestCompanyEndpoints:
             gender="M",
             id_group=group.id,
             id_rank=rank.id,
-            flag=False
+            
         )
 
         company = Company(
@@ -95,7 +95,7 @@ class TestCompanyEndpoints:
             gender="F",
             id_group=group.id,
             id_rank=rank.id,
-            flag=False
+            
         )
 
         company = Company(
