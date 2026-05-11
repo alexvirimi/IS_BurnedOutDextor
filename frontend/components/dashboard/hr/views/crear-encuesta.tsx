@@ -10,7 +10,6 @@ import {
   Check,
   Loader2,
   Plus,
-  CalendarRange,
 } from "lucide-react";
 import { apiFetch, apiPost } from "@/lib/api/context";
 import {
@@ -22,6 +21,7 @@ import {
   SurveyWithQuestions,
 } from "@/lib/api/interfaces";
 import { BUTTONS_COLORS } from "@/lib/styles/buttons-colors";
+import { QuestionSearchWithCreate } from "@/components/dashboard/shared/questionsearchwithcreate";
 
 // Main view buttons → hr palette (#8795C7)
 const C = BUTTONS_COLORS.hr;
@@ -29,8 +29,6 @@ const C = BUTTONS_COLORS.hr;
 const M = BUTTONS_COLORS.hrModal;
 
 type TargetType = "empresa" | "area" | "grupo" | "trabajador";
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export function HRCrearEncuesta() {
   // Remote data
@@ -100,6 +98,7 @@ export function HRCrearEncuesta() {
         setWorkers(workersData);
         setSurveys(surveysData);
         setQuestions(questionsData);
+        setApertureDate(new Date().toISOString().split("T")[0]);
       } catch (err) {
         setFetchError(
           err instanceof Error ? err.message : "Error cargando datos",
@@ -112,10 +111,6 @@ export function HRCrearEncuesta() {
   }, []);
 
   // ─── Derived data ────────────────────────────────────────────────────────────
-
-  const filteredQuestions = questions.filter((q) =>
-    q.text.toLowerCase().includes(questionSearch.toLowerCase()),
-  );
 
   const filteredSurveys = surveys.filter((s) =>
     s.name.toLowerCase().includes(surveySearch.toLowerCase()),
@@ -132,6 +127,14 @@ export function HRCrearEncuesta() {
           groups.some((g) => g.id === w.id_group && g.id_area === selectedArea),
         )
       : workers;
+
+  // Questions available in modal:
+  // - from-scratch: all questions (none are "already linked")
+  // - existing survey: questions not yet linked
+
+  const modalAvailableQuestions = isFromScratch
+    ? questions
+    : questions.filter((q) => !linkedQuestionIds.has(q.id));
 
   // ─── Handlers ────────────────────────────────────────────────────────────────
 
@@ -153,6 +156,9 @@ export function HRCrearEncuesta() {
       setLinkedQuestionIds(new Set());
     } finally {
       setLoadingLinked(false);
+      setSurveyName(surveyName);
+      setApertureDate(apertureDate);
+      setFinishingDate(finishingDate);
     }
   };
 
@@ -178,14 +184,18 @@ export function HRCrearEncuesta() {
     });
   };
 
+  // Called when QuestionSearchWithCreate creates a brand-new question
+
+  const handleQuestionCreated = (newQuestion: Question) => {
+    // Add to global pool so it's available in future sessions / searches
+    setQuestions((prev) => [...prev, newQuestion]);
+
+    // Auto-select it for this survey
+    setSelectedQuestionIds((prev) => new Set([...prev, newQuestion.id]));
+  };
+
   const handleConfirmSurvey = () => {
-    if (isFromScratch) {
-      // No backend survey object yet; we just close the modal.
-      // The name + questions will be sent on final submit.
-      setConfirmedSurvey(null);
-    } else {
-      setConfirmedSurvey(selectedSurvey);
-    }
+    setConfirmedSurvey(isFromScratch ? null : selectedSurvey);
     setShowSurveyModal(false);
   };
 
@@ -231,7 +241,7 @@ export function HRCrearEncuesta() {
           name: surveyName.trim(),
           aperture_date: apertureDate || today,
           finishing_date: finishingDate || today,
-          status: "Activa",
+          status: "activa",
         });
 
         // 2. Link selected questions
@@ -291,12 +301,6 @@ export function HRCrearEncuesta() {
 
   const canCreate = surveyChosen && targetChosen;
 
-  // ─── Chosen survey label for display ─────────────────────────────────────────
-
-  const chosenLabel = isFromScratch
-    ? surveyName.trim() || "Nueva encuesta"
-    : (confirmedSurvey?.name ?? null);
-
   // ─── Error state ──────────────────────────────────────────────────────────────
 
   if (fetchError) {
@@ -308,6 +312,8 @@ export function HRCrearEncuesta() {
       </div>
     );
   }
+
+  // setApertureDate(new Date().toISOString().split("T")[0]);
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
@@ -362,7 +368,8 @@ export function HRCrearEncuesta() {
               </span>
               <input
                 type="date"
-                value={apertureDate}
+                min={new Date().toISOString().split("T")[0]}
+                value={apertureDate || new Date().toISOString().split("T")[0]}
                 onChange={(e) => setApertureDate(e.target.value)}
                 className="px-4 py-2.5 border border-foreground/30 rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm font-sans"
               />
@@ -630,7 +637,8 @@ export function HRCrearEncuesta() {
         </button>
       </div>
 
-      {/* ── Question picker modal ─────────────────────────────────────────── */}
+      {/* ── Question picker modal ─────────────────────────────────────── */}
+
       {showSurveyModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col relative">
@@ -649,97 +657,88 @@ export function HRCrearEncuesta() {
                 ? "NUEVA ENCUESTA DESDE CERO"
                 : selectedSurvey?.name.toUpperCase()}
             </h2>
+
             <p className="text-sm text-muted-foreground mb-4 font-sans">
               {isFromScratch
-                ? "Elige las preguntas que formarán parte de esta nueva encuesta"
+                ? "Elige o crea las preguntas para esta encuesta"
                 : "Selecciona las preguntas que formarán parte de esta encuesta"}
             </p>
 
-            {/* Question search */}
-            <div className="relative mb-4">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              />
-              <input
-                type="text"
-                placeholder="Buscar preguntas..."
-                value={questionSearch}
-                onChange={(e) => setQuestionSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-foreground/30 rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+            {/* Loading linked questions */}
 
-            {/* Question list */}
-            <div className="flex-1 overflow-y-auto space-y-2 mb-4">
-              {loadingLinked ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
-                  <Loader2 size={16} className="animate-spin" />
-                  <span className="text-sm font-sans">
-                    Cargando preguntas vinculadas...
-                  </span>
-                </div>
-              ) : filteredQuestions.length === 0 ? (
-                <p className="text-muted-foreground text-sm font-sans text-center py-4">
-                  No se encontraron preguntas.
-                </p>
-              ) : (
-                filteredQuestions.map((question) => {
-                  const isSelected = selectedQuestionIds.has(question.id);
-                  const isAlreadyLinked =
-                    !isFromScratch && linkedQuestionIds.has(question.id);
-                  return (
-                    <button
-                      key={question.id}
-                      onClick={() =>
-                        !isAlreadyLinked && toggleQuestion(question.id)
-                      }
-                      disabled={isAlreadyLinked}
-                      className={`w-full flex items-center justify-between px-4 py-3 border-2 rounded-xl text-left transition-all ${
-                        isAlreadyLinked
-                          ? "border-primary/40 bg-primary/5 opacity-60 cursor-default"
-                          : isSelected
-                            ? "border-primary bg-primary/5"
-                            : "border-foreground/20 hover:border-foreground/40"
-                      }`}
-                    >
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-sm text-foreground">
-                          {question.text}
-                        </span>
-                        {isAlreadyLinked && (
-                          <span className="text-xs text-primary font-sans">
-                            Ya vinculada
-                          </span>
-                        )}
-                      </div>
-                      <span
-                        className={`ml-3 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                          isSelected
-                            ? "bg-primary border-primary"
-                            : "border-foreground/30"
-                        }`}
-                      >
-                        {isSelected && (
-                          <Check
-                            size={11}
-                            className="text-primary-foreground"
-                          />
-                        )}
-                      </span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+            {loadingLinked ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+                <Loader2 size={16} className="animate-spin" />
 
-            {/* Selection count + confirm */}
+                <span className="text-sm font-sans">
+                  Cargando preguntas vinculadas...
+                </span>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto mb-4">
+                {/* Already-linked pills (existing survey mode) */}
+
+                {!isFromScratch && linkedQuestionIds.size > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs text-muted-foreground font-sans mb-2">
+                      Ya vinculadas ({linkedQuestionIds.size}):
+                    </p>
+
+                    <div className="space-y-1">
+                      {questions
+
+                        .filter((q) => linkedQuestionIds.has(q.id))
+
+                        .map((q) => (
+                          <div
+                            key={q.id}
+                            className="flex items-center gap-2 px-3 py-2 border border-primary/30 bg-primary/5 rounded-lg"
+                          >
+                            <Check
+                              size={12}
+                              className="text-primary flex-shrink-0"
+                            />
+
+                            <span className="text-xs text-foreground truncate">
+                              {q.text}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+
+                    <hr className="my-3 border-border" />
+                  </div>
+                )}
+
+                {/* QuestionSearchWithCreate handles search + create for available questions */}
+
+                <QuestionSearchWithCreate
+                  questions={modalAvailableQuestions}
+                  selectedIds={
+                    isFromScratch
+                      ? selectedQuestionIds
+                      : new Set(
+                          [...selectedQuestionIds].filter(
+                            (id) => !linkedQuestionIds.has(id),
+                          ),
+                        )
+                  }
+                  disabledIds={isFromScratch ? new Set() : linkedQuestionIds}
+                  onToggle={toggleQuestion}
+                  onCreated={handleQuestionCreated}
+                />
+              </div>
+            )}
+
+            {/* Footer */}
+
             <div className="flex items-center justify-between pt-2 border-t border-border">
               <span className="text-sm text-muted-foreground font-sans">
                 {selectedQuestionIds.size} pregunta
                 {selectedQuestionIds.size !== 1 ? "s" : ""} seleccionada
                 {selectedQuestionIds.size !== 1 ? "s" : ""}
               </span>
+
               <button
                 onClick={handleConfirmSurvey}
                 disabled={selectedQuestionIds.size === 0}

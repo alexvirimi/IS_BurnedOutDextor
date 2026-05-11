@@ -19,9 +19,16 @@ import {
   Question,
   SurveyWithQuestions,
 } from "@/lib/api/interfaces";
+import { QuestionSearchWithCreate } from "@/components/dashboard/shared/questionsearchwithcreate";
 
 const C = BUTTONS_COLORS.hr;
 const M = BUTTONS_COLORS.hrModal;
+
+function getVariableName(v: Question["psicometric_variable"]): string {
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  return v.name;
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -176,9 +183,9 @@ export function HRModificarEncuestas() {
     setDetailError(null);
     try {
       await apiPatch(`/survey/${selectedSurvey.id}`, {
-        name: editName.trim(),
         aperture_date: editAperture,
         finishing_date: editFinishing,
+        status: "activa",
       });
       // Update local list so the row reflects the new name/dates immediately
       setSurveys((prev) =>
@@ -186,23 +193,14 @@ export function HRModificarEncuestas() {
           s.id === selectedSurvey.id
             ? {
                 ...s,
-                name: editName.trim(),
                 aperture_date: editAperture,
                 finishing_date: editFinishing,
+                status: "activa",
               }
             : s,
         ),
       );
-      setSelectedSurvey((prev) =>
-        prev
-          ? {
-              ...prev,
-              name: editName.trim(),
-              aperture_date: editAperture,
-              finishing_date: editFinishing,
-            }
-          : prev,
-      );
+      handleCloseModal();
       setHeaderSaved(true);
       setTimeout(() => setHeaderSaved(false), 2000);
     } catch (err) {
@@ -282,6 +280,16 @@ export function HRModificarEncuestas() {
     }
   };
 
+  // ── Question created via inline form ─────────────────────────────────────────
+  // The new question is added to the global pool and immediately linked.
+
+  const handleQuestionCreated = async (newQuestion: Question) => {
+    // Add to global pool so it appears in future searches
+    setAllQuestions((prev) => [...prev, newQuestion]);
+    // Immediately link it to the current survey
+    await handleAddQuestion(newQuestion);
+  };
+
   // ─── Remove question from survey ─────────────────────────────────────────────
 
   const handleRemoveQuestion = async (question: Question) => {
@@ -347,15 +355,6 @@ export function HRModificarEncuestas() {
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────────
-
-  // if (loadingList) {
-  //   return (
-  //     <div className="p-8 flex items-center gap-3 text-muted-foreground">
-  //       <Loader2 className="animate-spin w-5 h-5" />
-  //       <span className="font-sans text-sm">Cargando encuestas...</span>
-  //     </div>
-  //   );
-  // }
 
   if (listError) {
     return (
@@ -579,10 +578,49 @@ export function HRModificarEncuestas() {
                 >
                   {selectedSurvey.name.toUpperCase()}
                 </h2>
-                <p className="text-sm text-muted-foreground mb-1 font-sans">
-                  {selectedSurvey.aperture_date} →{" "}
-                  {selectedSurvey.finishing_date}
-                </p>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex flex-col gap-0.5 flex-1">
+                    <span className="text-xs text-muted-foreground font-sans">
+                      Apertura
+                    </span>
+                    <input
+                      type="date"
+                      value={editAperture}
+                      onChange={(e) => setEditAperture(e.target.value)}
+                      className="px-2 py-1 border border-foreground/20 rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-0.5 flex-1">
+                    <span className="text-xs text-muted-foreground font-sans">
+                      Cierre
+                    </span>
+                    <input
+                      type="date"
+                      value={editFinishing}
+                      min={editAperture || undefined}
+                      onChange={(e) => setEditFinishing(e.target.value)}
+                      className="px-2 py-1 border border-foreground/20 rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <button
+                    onClick={handleFinalizedSurvey}
+                    className={`mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0 disabled:opacity-50 ${
+                      headerSaved
+                        ? "bg-green-100 text-green-700"
+                        : `${M.button}`
+                    }`}
+                  >
+                    {savingActiveHeader ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : headerSaved ? (
+                      <>
+                        <Check size={13} /> Guardado
+                      </>
+                    ) : (
+                      "Guardar"
+                    )}
+                  </button>
+                </div>
                 <p className="text-xs text-muted-foreground font-sans">
                   Estado:{" "}
                   <span className="font-medium text-destructive">
@@ -623,7 +661,7 @@ export function HRModificarEncuestas() {
                         {i + 1}. {question.text}
                       </span>
                       <span className="text-xs text-muted-foreground font-sans">
-                        {question.psicometric_variable}
+                        {getVariableName(question.psicometric_variable)}
                       </span>
                     </div>
                     <button
@@ -644,59 +682,18 @@ export function HRModificarEncuestas() {
                 ))}
 
                 {/* Add questions section — active only */}
-                {showAddQuestions && modalMode === "active" && (
+                {showAddQuestions && (
                   <div className="mt-4 border-t border-border pt-4">
-                    <div className="relative mb-3">
-                      <Search
-                        size={15}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Buscar preguntas disponibles..."
-                        value={questionSearch}
-                        onChange={(e) => setQuestionSearch(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 border border-foreground/30 rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-
-                    {availableQuestions.length === 0 ? (
-                      <p className="text-muted-foreground text-xs font-sans text-center py-2">
-                        {allQuestions.length === linkedQuestions.length
-                          ? "Todas las preguntas ya están vinculadas."
-                          : "No se encontraron preguntas."}
-                      </p>
-                    ) : (
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {availableQuestions.map((question) => (
-                          <div
-                            key={question.id}
-                            className="flex items-center justify-between px-4 py-3 border border-foreground/20 rounded-xl"
-                          >
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-sm text-foreground">
-                                {question.text}
-                              </span>
-                              <span className="text-xs text-muted-foreground font-sans">
-                                {question.psicometric_variable}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => handleAddQuestion(question)}
-                              disabled={savingQuestion === question.id}
-                              className={`ml-3 flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-40 ${M.button} border-foreground/30`}
-                              title="Vincular pregunta"
-                            >
-                              {savingQuestion === question.id ? (
-                                <Loader2 size={13} className="animate-spin" />
-                              ) : (
-                                <Plus size={13} />
-                              )}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <QuestionSearchWithCreate
+                      questions={availableQuestions}
+                      selectedIds={new Set<string>()}
+                      disabledIds={new Set<string>()}
+                      onToggle={(id) => {
+                        const q = availableQuestions.find((q) => q.id === id);
+                        if (q) handleAddQuestion(q);
+                      }}
+                      onCreated={handleQuestionCreated}
+                    />
                   </div>
                 )}
               </div>
