@@ -33,3 +33,6 @@ test.db
 node_modules/
 .next/
 .mypy_chache
+
+.env
+.env.*

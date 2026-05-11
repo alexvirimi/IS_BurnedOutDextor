@@ -1,139 +1,39 @@
 "use client";
 
-import { useState } from "react";
-import { X, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { useEffect } from "react";
+import { X, ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
 import { BUTTONS_COLORS } from "@/lib/styles/buttons-colors";
+import { useEncuestas } from "@/hooks/useEncuestas";
 
-// PM uses the same lavender palette as worker
 const C = BUTTONS_COLORS.pm;
-
-interface Encuesta {
-  id: number;
-  nombre: string;
-  preguntas: {
-    id: number;
-    texto: string;
-    tipo: "escala" | "texto" | "opcion";
-    opciones?: string[];
-  }[];
-}
-
-const encuestasPendientes: Encuesta[] = [
-  {
-    id: 1,
-    nombre: "Realizar encuesta de seguimiento 2026-4-2",
-    preguntas: [
-      {
-        id: 1,
-        texto: "¿Cómo calificarías tu nivel de energía esta semana?",
-        tipo: "escala",
-      },
-      {
-        id: 2,
-        texto: "¿Te has sentido apoyado por tu equipo?",
-        tipo: "escala",
-      },
-      {
-        id: 3,
-        texto: "¿Qué tan satisfecho estás con tu carga de trabajo actual?",
-        tipo: "escala",
-      },
-      {
-        id: 4,
-        texto: "¿Has experimentado estrés relacionado con el trabajo?",
-        tipo: "escala",
-      },
-      {
-        id: 5,
-        texto: "¿Cómo describirías tu motivación laboral?",
-        tipo: "escala",
-      },
-      { id: 6, texto: "¿Tienes algún comentario adicional?", tipo: "texto" },
-    ],
-  },
-  {
-    id: 2,
-    nombre: "Realizar encuesta mensual 2026-4",
-    preguntas: [
-      {
-        id: 1,
-        texto: "¿Cómo calificarías el ambiente laboral este mes?",
-        tipo: "escala",
-      },
-      { id: 2, texto: "¿Te sientes valorado por tu trabajo?", tipo: "escala" },
-      {
-        id: 3,
-        texto: "¿Cómo calificarías la comunicación con tu supervisor?",
-        tipo: "escala",
-      },
-      {
-        id: 4,
-        texto:
-          "¿Has podido mantener un equilibrio entre trabajo y vida personal?",
-        tipo: "escala",
-      },
-      {
-        id: 5,
-        texto: "¿Qué aspectos mejorarías de tu entorno laboral?",
-        tipo: "texto",
-      },
-    ],
-  },
-];
 
 interface PMEncuestasViewProps {
   userName: string;
 }
 
 export function PMEncuestasView({ userName }: PMEncuestasViewProps) {
-  const [selectedEncuesta, setSelectedEncuesta] = useState<Encuesta | null>(
-    null,
-  );
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [respuestas, setRespuestas] = useState<Record<number, number | string>>(
-    {},
-  );
-  const [showCompletado, setShowCompletado] = useState(false);
+  const {
+    encuestas,
+    loadingList,
+    listError,
+    loadEncuestas,
+    selectedEncuesta,
+    loadingQuestions,
+    questionsError,
+    handleSelectEncuesta,
+    currentQuestion,
+    currentPregunta,
+    currentRespuesta,
+    showCompletado,
+    handleRespuesta,
+    handleNext,
+    handlePrev,
+    handleClose,
+  } = useEncuestas();
 
-  const handleSelectEncuesta = (encuesta: Encuesta) => {
-    setSelectedEncuesta(encuesta);
-    setCurrentQuestion(0);
-    setRespuestas({});
-    setShowCompletado(false);
-  };
-
-  const handleRespuesta = (value: number | string) => {
-    if (!selectedEncuesta) return;
-    setRespuestas({
-      ...respuestas,
-      [selectedEncuesta.preguntas[currentQuestion].id]: value,
-    });
-  };
-
-  const handleNext = () => {
-    if (!selectedEncuesta) return;
-    if (currentQuestion < selectedEncuesta.preguntas.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-    } else {
-      setShowCompletado(true);
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentQuestion > 0) setCurrentQuestion(currentQuestion - 1);
-  };
-
-  const handleClose = () => {
-    setSelectedEncuesta(null);
-    setCurrentQuestion(0);
-    setRespuestas({});
-    setShowCompletado(false);
-  };
-
-  const currentPregunta = selectedEncuesta?.preguntas[currentQuestion];
-  const currentRespuesta = currentPregunta
-    ? respuestas[currentPregunta.id]
-    : undefined;
+  useEffect(() => {
+    loadEncuestas();
+  }, [loadEncuestas]);
 
   return (
     <div className="flex-1 p-8 lg:p-12 overflow-auto">
@@ -148,24 +48,53 @@ export function PMEncuestasView({ userName }: PMEncuestasViewProps) {
         </p>
         <p className="text-foreground text-lg mb-12">Respira con nosotros.</p>
 
-        {/* Pending surveys — list item color */}
-        <div className="space-y-3 max-w-3xl">
-          {encuestasPendientes.map((encuesta) => (
-            <button
-              key={encuesta.id}
-              onClick={() => handleSelectEncuesta(encuesta)}
-              className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${C.listItem}`}
-            >
-              {encuesta.nombre}
-            </button>
-          ))}
-        </div>
+        {/* ── Survey list ─────────────────────────────────────────────── */}
+        {loadingList ? (
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <Loader2 size={18} className="animate-spin" />
+            <span className="font-sans text-sm">Cargando encuestas...</span>
+          </div>
+        ) : listError ? (
+          <div className="px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-sans">
+            {listError}
+          </div>
+        ) : encuestas.length === 0 ? (
+          <p className="text-muted-foreground font-sans text-sm">
+            No tienes encuestas asignadas.
+          </p>
+        ) : (
+          <div className="space-y-3 max-w-3xl">
+            {encuestas.map((encuesta) => (
+              <button
+                key={encuesta.id}
+                onClick={() => handleSelectEncuesta(encuesta)}
+                disabled={encuesta.already_responded}
+                className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${
+                  encuesta.already_responded
+                    ? "bg-secondary text-muted-foreground cursor-not-allowed opacity-60"
+                    : `${C.listItem}`
+                }`}
+              >
+                <span>{encuesta.nombre}</span>
+                {encuesta.already_responded && (
+                  <span className="ml-2 text-xs font-sans">✓ Completada</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* Survey modal */}
+        {/* ── Error fetching questions ─────────────────────────────────── */}
+        {questionsError && (
+          <div className="mt-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-sans">
+            {questionsError}
+          </div>
+        )}
+
+        {/* ── Survey modal ─────────────────────────────────────────────── */}
         {selectedEncuesta && !showCompletado && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-background rounded-xl p-6 w-full max-w-2xl relative">
-              {/* Close button */}
               <button
                 onClick={handleClose}
                 className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${C.button}`}
@@ -177,99 +106,102 @@ export function PMEncuestasView({ userName }: PMEncuestasViewProps) {
                 className="text-2xl font-bold text-foreground mb-2"
                 style={{ fontFamily: "var(--font-heading)" }}
               >
-                {selectedEncuesta.nombre.replace("Realizar ", "").toUpperCase()}
+                {selectedEncuesta.nombre.toUpperCase()}
               </h2>
 
-              <p className="text-muted-foreground mb-8">
-                Pregunta {currentQuestion + 1} de{" "}
-                {selectedEncuesta.preguntas.length}
-              </p>
-
-              {/* Progress bar */}
-              <div className="w-full h-2 bg-secondary rounded-full mb-8">
-                <div
-                  className="h-full bg-primary rounded-full transition-all duration-300"
-                  style={{
-                    width: `${((currentQuestion + 1) / selectedEncuesta.preguntas.length) * 100}%`,
-                  }}
-                />
-              </div>
-
-              {/* Question */}
-              <div className="mb-8">
-                <p className="text-foreground text-lg mb-6">
-                  {currentPregunta?.texto}
-                </p>
-
-                {currentPregunta?.tipo === "escala" && (
-                  <div className="flex justify-between gap-2">
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <button
-                        key={value}
-                        onClick={() => handleRespuesta(value)}
-                        className={`flex-1 py-4 rounded-lg border-2 transition-all ${
-                          currentRespuesta === value
-                            ? `${C.buttonActive} border-2`
-                            : "border-foreground/30 text-foreground hover:border-primary"
-                        }`}
-                      >
-                        {value}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {currentPregunta?.tipo === "texto" && (
-                  <textarea
-                    value={(currentRespuesta as string) || ""}
-                    onChange={(e) => handleRespuesta(e.target.value)}
-                    placeholder="Escribe tu respuesta aquí..."
-                    className="w-full p-4 border-2 border-foreground/30 rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary resize-none h-32"
-                  />
-                )}
-              </div>
-
-              {currentPregunta?.tipo === "escala" && (
-                <div className="flex justify-between text-sm text-muted-foreground mb-8">
-                  <span>Muy en desacuerdo</span>
-                  <span>Muy de acuerdo</span>
+              {/* Loading questions */}
+              {loadingQuestions ? (
+                <div className="flex items-center justify-center gap-3 py-16 text-muted-foreground">
+                  <Loader2 size={20} className="animate-spin" />
+                  <span className="font-sans text-sm">
+                    Cargando preguntas...
+                  </span>
                 </div>
-              )}
+              ) : (
+                <>
+                  <p className="text-muted-foreground mb-8">
+                    Pregunta {currentQuestion + 1} de{" "}
+                    {selectedEncuesta.preguntas.length}
+                  </p>
 
-              {/* Navigation */}
-              <div className="flex justify-between">
-                <button
-                  onClick={handlePrev}
-                  disabled={currentQuestion === 0}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                    currentQuestion === 0
-                      ? "text-muted-foreground cursor-not-allowed"
-                      : `${C.button}`
-                  }`}
-                >
-                  <ChevronLeft size={20} />
-                  Anterior
-                </button>
-                <button
-                  onClick={handleNext}
-                  disabled={currentRespuesta === undefined}
-                  className={`flex items-center gap-2 px-6 py-2 rounded-lg transition-colors ${
-                    currentRespuesta === undefined
-                      ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                      : `${C.button}`
-                  }`}
-                >
-                  {currentQuestion === selectedEncuesta.preguntas.length - 1
-                    ? "Finalizar"
-                    : "Siguiente"}
-                  <ChevronRight size={20} />
-                </button>
-              </div>
+                  {/* Progress bar */}
+                  <div className="w-full h-2 bg-secondary rounded-full mb-8">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-300"
+                      style={{
+                        width:
+                          selectedEncuesta.preguntas.length > 0
+                            ? `${((currentQuestion + 1) / selectedEncuesta.preguntas.length) * 100}%`
+                            : "0%",
+                      }}
+                    />
+                  </div>
+
+                  {/* Question */}
+                  <div className="mb-8">
+                    <p className="text-foreground text-lg mb-6">
+                      {currentPregunta?.texto}
+                    </p>
+
+                    {/* Scale options — all questions are escala */}
+                    <div className="flex justify-between gap-2">
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <button
+                          key={value}
+                          onClick={() => handleRespuesta(value)}
+                          className={`flex-1 py-4 rounded-lg border-2 transition-all ${
+                            currentRespuesta === value
+                              ? `${C.buttonActive} border-2`
+                              : "border-foreground/30 text-foreground hover:border-primary"
+                          }`}
+                        >
+                          {value}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between text-sm text-muted-foreground mb-8">
+                    <span>Muy en desacuerdo</span>
+                    <span>Muy de acuerdo</span>
+                  </div>
+
+                  {/* Navigation */}
+                  <div className="flex justify-between">
+                    <button
+                      onClick={handlePrev}
+                      disabled={currentQuestion === 0}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                        currentQuestion === 0
+                          ? "text-muted-foreground cursor-not-allowed"
+                          : `${C.button}`
+                      }`}
+                    >
+                      <ChevronLeft size={20} />
+                      Anterior
+                    </button>
+                    <button
+                      onClick={handleNext}
+                      disabled={currentRespuesta === undefined}
+                      className={`flex items-center gap-2 px-6 py-2 rounded-lg transition-colors ${
+                        currentRespuesta === undefined
+                          ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                          : `${C.button}`
+                      }`}
+                    >
+                      {currentQuestion === selectedEncuesta.preguntas.length - 1
+                        ? "Finalizar"
+                        : "Siguiente"}
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
 
-        {/* Completion modal */}
+        {/* ── Completion modal ─────────────────────────────────────────── */}
         {showCompletado && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-background rounded-xl p-8 w-full max-w-md text-center">
