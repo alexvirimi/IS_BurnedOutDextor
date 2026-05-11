@@ -47,3 +47,15 @@ export interface SurveyWithQuestions {
   name: string;
   questions: Question[];
 }
+
+/** Mirrors backend MySurveyResponse from /survey-assignment/my-surveys */
+export interface MySurveyResponse {
+  id: string;
+  name: string;
+  aperture_date: string;
+  finishing_date: string;
+  status: string;
+  assignment_id: string;
+  questions_count: number;
+  already_responded: boolean;
+}
