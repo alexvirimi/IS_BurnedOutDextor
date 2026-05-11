@@ -4,7 +4,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.security import APIKeyHeader
 from app.database import engine
 from app.dbmodels.base import Base
 from app.routes.area_cr_service import router as area_router
@@ -20,37 +19,56 @@ from app.routes.survey_assignment_service import router as survey_assignment_rou
 from app.routes.workers_cr_service import router as worker_router
 from app.routes.auth_service import router as auth_router
 from app.routes.psicometric_value_r_service import router as psicometric_variable_router
-from fastapi.security import OAuth2PasswordBearer
+
+# ─── App ──────────────────────────────────────────────────────────────────────
+#
+# Swagger security note
+# ─────────────────────
+# Protected endpoints use APIKeyCookie + HTTPBearer (see auth_deps.py).
+# Swagger UI shows the padlock on every route that declares a Security()
+# dependency.  To authenticate in Swagger:
+#   1. POST /auth/login via the "Try it out" form.
+#   2. Copy the access_token value from the response cookie (browser DevTools).
+#   3. Click the padlock → paste the token as a Bearer value.
+#
+# We intentionally do NOT set swagger_ui_init_oauth / oauth2_redirect_url
+# because this app does not use an OAuth2 flow.  Adding those keys causes
+# FastAPI to inject an OAuth2 security requirement that conflicts with the
+# cookie/Bearer scheme and silently drops the cookie from authenticated
+# requests — which was the regression introduced in the previous commit.
 
 app = FastAPI(
     title="BurnedOutDextor API",
     description="API para el proyecto BurnedOutDextor.",
     version="1.0.0",
-
-    swagger_ui_init_oauth={
-        "usePkceWithAuthorizationCodeGrant": True,
-    },
-
+    # persistAuthorization keeps Swagger's Bearer token across page reloads.
+    # It is safe to keep; it only affects the Swagger UI state, not the app.
     swagger_ui_parameters={
-        "persistAuthorization": True
-    }
+        "persistAuthorization": True,
+    },
 )
 
-# Explicit origins are required when allow_credentials=True.
-# Wildcards ("*") are rejected by browsers for credentialed cross-origin requests.
+# ─── CORS ─────────────────────────────────────────────────────────────────────
+#
+# allow_credentials=True is required so the browser forwards the HttpOnly
+# access_token cookie on cross-origin requests.
+# Wildcard origins ("*") are rejected by browsers when credentials are sent,
+# so origins must be listed explicitly.
+
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001",
 ).split(",")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,       # required so cookies are forwarded
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ─── Startup ──────────────────────────────────────────────────────────────────
 
 @app.on_event("startup")
 def on_startup():
@@ -61,6 +79,8 @@ def on_startup():
 def root():
     return RedirectResponse(url="/docs")
 
+
+# ─── Routers ──────────────────────────────────────────────────────────────────
 
 app.include_router(area_router)
 app.include_router(answer_router)

@@ -13,36 +13,31 @@ export interface LoginResponse {
   worker_id: string;
   rank_level: 1 | 2 | 3;
   rank_name: string;
-  token: string; // add this
+  // The backend returns the raw JWT in the JSON body so the frontend can use
+  // it as a Bearer fallback for cross-origin PATCH / DELETE requests where
+  // samesite="lax" prevents the HttpOnly cookie from being forwarded.
+  // This field matches the "access_token" key in the login JSON response.
+  access_token: string;
 }
 
 // ─── Core fetch wrapper ───────────────────────────────────────────────────────
 
-/**
- * Sends a multipart/form-data POST (matching the backend's Form(...) params).
- * Pass `authUserId` to include the `auth-user-id` header on authenticated calls.
- */
 async function postForm<T>(
   path: string,
   body: Record<string, string>,
-  authUserId?: string,
 ): Promise<T> {
   const formData = new FormData();
   for (const [key, value] of Object.entries(body)) {
     formData.append(key, value);
   }
 
-  const headers: HeadersInit = {};
-  if (authUserId) headers["auth-user-id"] = authUserId;
-
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers,
     body: formData,
+    credentials: "include", // sends the HttpOnly cookie if already set
   });
 
   if (!res.ok) {
-    // Surface the backend detail message when available
     let detail = `HTTP ${res.status}`;
     try {
       const json = await res.json();
@@ -69,7 +64,7 @@ export const authApi = {
   logout(): Promise<void> {
     return fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
-      credentials: "include", // sends the HttpOnly cookie automatically
+      credentials: "include",
     }).then(() => undefined);
   },
 };
