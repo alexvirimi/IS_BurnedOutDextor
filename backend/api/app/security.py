@@ -2,6 +2,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, status
 from uuid import UUID
+from app.config import SECRET_KEY
 import os
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
