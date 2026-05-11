@@ -17,7 +17,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "BUD Dashboard",
+  title: "Inbudex",
   description: "Dashboard de bienestar laboral",
   generator: "v0.app",
   icons: {
