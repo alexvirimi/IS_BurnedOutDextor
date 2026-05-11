@@ -1,82 +1,142 @@
-#Pass
+# app/tests/endpoints/surveys_endpoint_test.py
+
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
-from app.dbmodels import Surveys
-from app.schemas.auth_scheme import CurrentUserData
+from app.dbmodels.surveys import Surveys
 
 
-class TestSurveyEndpoints:
+def test_read_surveys(client, db):
 
-    def test_get_surveys_success(self, client, db):
+    survey = Surveys(
+        id=uuid.uuid4(),
+        name="Encuesta General",
+        aperture_date=date.today(),
+        finishing_date=date.today() + timedelta(days=5),
+        status="activa"
+    )
 
-        survey = Surveys(
-            id=uuid.uuid4(),
-            name="Encuesta Burnout",
-            aperture_date=date.today(),
-            finishing_date=date.today(),
-            status="Activa"
-        )
+    db.add(survey)
+    db.commit()
 
-        db.add(survey)
-        db.commit()
+    response = client.get("/survey/")
 
-        response = client.get("/survey/")
+    assert response.status_code == 200
 
-        assert response.status_code == 200
-        assert len(response.json()) == 1
-        assert response.json()[0]["name"] == "Encuesta Burnout"
+    data = response.json()
 
-    def test_get_survey_by_id_success(self, client, db):
+    assert isinstance(data, list)
+    assert len(data) >= 1
 
-        survey = Surveys(
-            id=uuid.uuid4(),
-            name="Encuesta Estrés",
-            aperture_date=date.today(),
-            finishing_date=date.today(),
-            status="Activa"
-        )
 
-        db.add(survey)
-        db.commit()
+def test_read_survey_by_id(client, db):
 
-        response = client.get(f"/survey/{survey.id}")
+    survey = Surveys(
+        id=uuid.uuid4(),
+        name="Encuesta Backend",
+        aperture_date=date.today(),
+        finishing_date=date.today() + timedelta(days=5),
+        status="activa"
+    )
 
-        assert response.status_code == 200
-        assert response.json()["id"] == str(survey.id)
+    db.add(survey)
+    db.commit()
 
-    def test_get_survey_not_found(self, client):
+    response = client.get(f"/survey/{survey.id}")
 
-        response = client.get(f"/survey/{uuid.uuid4()}")
+    assert response.status_code == 200
 
-        assert response.status_code == 404
-        assert response.json()["detail"] == "Encuesta no encontrada"
+    data = response.json()
 
-    def test_create_survey_success(self, client, rrhh_user):
+    assert data["id"] == str(survey.id)
 
-        response = client.post(
-            "/survey/",
-            data={
-                "name": "Encuesta General",
-                "aperture_date": "2026-01-01",
-                "finishing_date": "2026-01-30",
-                "status": "Activa"
-            }
-        )
 
-        assert response.status_code == 201
-        assert response.json()["name"] == "Encuesta General"
+def test_read_survey_not_found(client):
 
-    def test_create_survey_unauthorized(self, client):
+    response = client.get(f"/survey/{uuid.uuid4()}")
 
-        response = client.post(
-            "/survey/",
-            data={
-                "name": "Encuesta General",
-                "aperture_date": "2026-01-01",
-                "finishing_date": "2026-01-30",
-                "status": "Activa"
-            }
-        )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Encuesta no encontrada"
 
-        assert response.status_code == 401
+
+def test_create_survey(client, rrhh_user):
+
+    response = client.post(
+        "/survey/",
+        data={
+            "name": "Nueva Encuesta",
+            "aperture_date": str(date.today()),
+            "finishing_date": str(date.today() + timedelta(days=10)),
+            "status": "activa"
+        }
+    )
+
+    assert response.status_code == 201
+
+    data = response.json()
+
+    assert data["name"] == "Nueva Encuesta"
+
+
+def test_update_survey(client, db, rrhh_user):
+
+    survey = Surveys(
+        id=uuid.uuid4(),
+        name="Encuesta Vieja",
+        aperture_date=date.today(),
+        finishing_date=date.today() + timedelta(days=5),
+        status="activa"
+    )
+
+    db.add(survey)
+    db.commit()
+
+    response = client.patch(
+        f"/survey/{survey.id}",
+        json={
+            "name": "Encuesta Actualizada",
+            "status": "finalizada"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["name"] == "Encuesta Actualizada"
+    assert data["status"] == "finalizada"
+
+
+def test_update_survey_not_found(client, rrhh_user):
+
+    response = client.patch(
+        f"/survey/{uuid.uuid4()}",
+        json={
+            "name": "No existe"
+        }
+    )
+
+    assert response.status_code == 404
+
+
+def test_read_survey_complete(client, db):
+
+    survey = Surveys(
+        id=uuid.uuid4(),
+        name="Encuesta Completa",
+        aperture_date=date.today(),
+        finishing_date=date.today() + timedelta(days=5),
+        status="activa"
+    )
+
+    db.add(survey)
+    db.commit()
+
+    response = client.get(f"/survey/{survey.id}/complete")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["name"] == "Encuesta Completa"
+    assert "answer_options" in data

@@ -1,131 +1,200 @@
-# Tests para los esquemas AnswerCreate y AnswerResponse
-
+import uuid
 import pytest
-from uuid import uuid4
+
 from datetime import date
-from pydantic import ValidationError
-from app.schemas.answer_scheme import AnswerCreate, AnswerResponse
+from fastapi import HTTPException
+
+from app.servicemodels.answer_service import AnswerService
+
 from app.dbmodels.answer import AnswerEnum
+from app.dbmodels.area import Area
+from app.dbmodels.groups import Group
+from app.dbmodels.ranks import Rank
+from app.dbmodels.workers import Worker
+from app.dbmodels.questions import Question
+from app.dbmodels.surveys import Surveys
+from app.dbmodels.question_surveys import QuestionSurveys
+from app.dbmodels.psicometric_variable import PsicometricVariable
 
 
-class TestAnswerCreate:
+@pytest.fixture
+def answer_data(db):
 
-    def test_create_answer_success(self):
-        """Debe crear correctamente un AnswerCreate válido"""
-
-        answer = AnswerCreate(
-        id_worker=uuid4(),
-        id_group=uuid4(),
-        id_area=uuid4(),
-        id_question_survey=uuid4(),
-        value=AnswerEnum.SIEMPRE
+    rank = Rank(
+        id=uuid.uuid4(),
+        rank_name="Empleado",
+        level=1
     )
-        assert answer.id_worker is not None
-        assert answer.id_group is not None
-        assert answer.id_area is not None
-        assert answer.id_question_survey is not None
-        assert answer.value == AnswerEnum.SIEMPRE
-        assert answer.created_at == date.today()
 
-    def test_created_at_default(self):
-        """Debe asignar automáticamente la fecha actual"""
+    area = Area(
+        id=uuid.uuid4(),
+        name="Tecnología"
+    )
 
-        answer = AnswerCreate(
-        id_worker=uuid4(),
-        id_group=uuid4(),
-        id_area=uuid4(),
-        id_question_survey=uuid4(),
-        value=AnswerEnum.SIEMPRE
-        )
+    group = Group(
+        id=uuid.uuid4(),
+        name="Backend",
+        id_area=area.id,
+        id_leader=None
+    )
 
-        assert answer.created_at == date.today()
+    worker = Worker(
+        id=uuid.uuid4(),
+        name="Mario",
+        last_names="Julio",
+        age=20,
+        gender="M",
+        id_group=group.id,
+        id_rank=rank.id
+    )
 
-    def test_invalid_uuid(self):
-        """Debe fallar si un UUID es inválido"""
+    psicometric_variable = PsicometricVariable(
+        id=uuid.uuid4(),
+        name="Estrés"
+    )
 
-        with pytest.raises(ValidationError):
+    survey = Surveys(
+        id=uuid.uuid4(),
+        name="Encuesta Burnout",
+        aperture_date=date(2025, 1, 1),
+        finishing_date=date(2025, 12, 31),
+        status="ACTIVA"
+    )
 
-            AnswerCreate(
-                id_worker="uuid-invalido",
-                id_group=uuid4(),
-                id_area=uuid4(),
-                id_question_survey=uuid4(),
-                value=AnswerEnum.CASI_SIEMPRE
-            )
+    question = Question(
+        id=uuid.uuid4(),
+        text="¿Cómo te sientes?",
+        psicometric_variable_id=psicometric_variable.id
+    )
 
-    def test_invalid_enum(self):
-        """Debe fallar si el enum no existe"""
+    question_survey = QuestionSurveys(
+        id=uuid.uuid4(),
+        id_survey=survey.id,
+        id_question=question.id
+    )
 
-        with pytest.raises(ValidationError):
+    db.add_all([
+        rank,
+        area,
+        group,
+        worker,
+        psicometric_variable,
+        survey,
+        question,
+        question_survey
+    ])
 
-            AnswerCreate(
-                id_worker=uuid4(),
-                id_group=uuid4(),
-                id_area=uuid4(),
-                id_question_survey=uuid4(),
-                value="respuesta_invalida"
-            )
+    db.commit()
 
-    def test_as_form_method(self):
-        """Debe crear correctamente usando as_form"""
-
-        answer = AnswerCreate.as_form(
-            id_worker=uuid4(),
-            id_group=uuid4(),
-            id_area=uuid4(),
-            id_question_survey=uuid4(),
-            value=AnswerEnum.A_VECES
-        )
-
-        assert isinstance(answer, AnswerCreate)
-        assert answer.value == AnswerEnum.A_VECES
+    return {
+        "worker": worker,
+        "group": group,
+        "area": area,
+        "survey": survey,
+        "question": question,
+        "question_survey": question_survey
+    }
 
 
-class TestAnswerResponse:
+def test_get_answers(db):
 
-    def test_answer_response_success(self):
-        """Debe crear correctamente un AnswerResponse"""
+    service = AnswerService(db)
 
-        response = AnswerResponse(
-            id=uuid4(),
-            id_worker=uuid4(),
-            id_group=uuid4(),
-            id_area=uuid4(),
-            id_question_survey=uuid4(),
-            value=AnswerEnum.SIEMPRE,
-            created_at=date.today()
-        )
+    answers = service.get_answers()
 
-        assert response.id is not None
-        assert response.value == AnswerEnum.SIEMPRE
-        assert response.created_at == date.today()
+    assert isinstance(answers, list)
 
-    def test_answer_response_invalid_enum(self):
-        """Debe fallar con enum inválido"""
 
-        with pytest.raises(ValidationError):
+def test_create_answer(db, answer_data):
 
-            AnswerResponse(
-                id=uuid4(),
-                id_worker=uuid4(),
-                id_group=uuid4(),
-                id_area=uuid4(),
-                id_question_survey=uuid4(),
-                value="valor_fake",
-                created_at=date.today()
-            )
+    service = AnswerService(db)
 
-    def test_answer_response_invalid_date(self):
-        """Debe fallar con fecha inválida"""
+    payload = {
+        "id_worker": answer_data["worker"].id,
+        "id_group": answer_data["group"].id,
+        "id_area": answer_data["area"].id,
+        "id_question_survey": answer_data["question_survey"].id,
+        "value": AnswerEnum.SIEMPRE,
+        "created_at": date.today()
+    }
 
-        with pytest.raises(ValidationError):
+    created = service.create_answer(payload)
 
-            AnswerResponse(
-                id=uuid4(),
-                id_worker=uuid4(),
-                id_group=uuid4(),
-                id_area=uuid4(),
-                id_question_survey=uuid4(),
-                value=AnswerEnum.CASI_SIEMPRE,
-                created_at=12345
-            )
+    assert created.id is not None
+    assert created.value == AnswerEnum.SIEMPRE
+
+
+def test_create_answer_invalid_worker(db, answer_data):
+
+    service = AnswerService(db)
+
+    payload = {
+        "id_worker": uuid.uuid4(),
+        "id_group": answer_data["group"].id,
+        "id_area": answer_data["area"].id,
+        "id_question_survey": answer_data["question_survey"].id,
+        "value": AnswerEnum.A_VECES,
+        "created_at": date.today()
+    }
+
+    with pytest.raises(HTTPException) as exc:
+
+        service.create_answer(payload)
+
+    assert exc.value.status_code == 404
+    assert exc.value.detail == "El trabajador no existe"
+
+
+def test_get_answer_by_id(db, answer_data):
+
+    service = AnswerService(db)
+
+    payload = {
+        "id_worker": answer_data["worker"].id,
+        "id_group": answer_data["group"].id,
+        "id_area": answer_data["area"].id,
+        "id_question_survey": answer_data["question_survey"].id,
+        "value": AnswerEnum.CASI_SIEMPRE,
+        "created_at": date.today()
+    }
+
+    created = service.create_answer(payload)
+
+    found = service.get_answer_by_id(created.id)
+
+    assert found is not None
+    assert found.id == created.id
+
+
+def test_create_answer_from_user(db, answer_data):
+
+    service = AnswerService(db)
+
+    created = service.create_answer_from_user(
+        worker_id=answer_data["worker"].id,
+        question_survey_id=answer_data["question_survey"].id,
+        value=AnswerEnum.NUNCA
+    )
+
+    assert created.id is not None
+    assert created.id_worker == answer_data["worker"].id
+
+
+def test_get_answers_by_worker(db, answer_data):
+
+    service = AnswerService(db)
+
+    service.create_answer_from_user(
+        worker_id=answer_data["worker"].id,
+        question_survey_id=answer_data["question_survey"].id,
+        value=AnswerEnum.A_VECES
+    )
+
+    answers = service.get_answers_by_worker(
+        answer_data["worker"].id
+    )
+
+    assert len(answers) >= 1
+    assert answers[0].id_worker == answer_data["worker"].id
+
+

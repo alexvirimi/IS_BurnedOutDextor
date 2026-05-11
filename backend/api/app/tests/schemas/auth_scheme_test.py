@@ -1,63 +1,186 @@
-# app/tests/schemas/auth_scheme_test.py
 import uuid
-from app.schemas.auth_scheme import (
-    AuthUserCreate,
-    AuthUserResponse,
-    LoginRequest,
-    LoginResponse,
-    CurrentUserData
-)
+import pytest
+import bcrypt
+
+from app.servicemodels.auth_user_service import AuthUserService
+
+from app.dbmodels.auth_user import AuthUser
+from app.dbmodels.area import Area
+from app.dbmodels.groups import Group
+from app.dbmodels.ranks import Rank
+from app.dbmodels.workers import Worker
 
 
-class TestAuthSchemas:
+@pytest.fixture
+def auth_data(db):
 
-    def test_auth_user_create_schema(self):
-        worker_id = uuid.uuid4()
-        payload = AuthUserCreate(worker_id=worker_id, username="mario", password="1234")
-        assert payload.worker_id == worker_id
-        assert payload.username == "mario"
-        assert payload.password == "1234"
+    rank = Rank(
+        id=uuid.uuid4(),
+        rank_name="Empleado",
+        level=1
+    )
 
-    def test_auth_user_response_schema(self):
-        auth_id = uuid.uuid4()
-        worker_id = uuid.uuid4()
-        response = AuthUserResponse(id=auth_id, worker_id=worker_id, username="ana")
-        assert response.id == auth_id
-        assert response.worker_id == worker_id
-        assert response.username == "ana"
+    area = Area(
+        id=uuid.uuid4(),
+        name="Tecnología"
+    )
 
-    def test_login_request_schema(self):
-        payload = LoginRequest(username="julio", password="admin123")
-        assert payload.username == "julio"
-        assert payload.password == "admin123"
+    group = Group(
+        id=uuid.uuid4(),
+        name="Backend",
+        id_area=area.id,
+        id_leader=None
+    )
 
-    def test_login_response_schema(self):
-        auth_user_id = uuid.uuid4()
-        worker_id = uuid.uuid4()
-        response = LoginResponse(
-            worker_id=worker_id,
-            rank_level=3,
-            rank_name="rrhh",
-            auth_user_id=auth_user_id
-        )
-        assert response.worker_id == worker_id
-        assert response.rank_level == 3
-        assert response.rank_name == "rrhh"
-        assert response.auth_user_id == auth_user_id
+    worker = Worker(
+        id=uuid.uuid4(),
+        name="Mario",
+        last_names="Julio",
+        age=20,
+        gender="M",
+        id_group=group.id,
+        id_rank=rank.id
+    )
 
-    def test_current_user_data_schema(self):
-        auth_user_id = uuid.uuid4()
-        worker_id = uuid.uuid4()
-        group_id = uuid.uuid4()
-        current_user = CurrentUserData(
-            auth_user_id=auth_user_id,
-            worker_id=worker_id,
-            username="mario",
-            rank_level=2,
-            rank_name="lider",
-            id_group=group_id
-        )
-        assert current_user.username == "mario"
-        assert current_user.rank_level == 2
-        assert current_user.rank_name == "lider"
-        assert current_user.auth_user_id == auth_user_id
+    db.add_all([
+        rank,
+        area,
+        group,
+        worker
+    ])
+
+    db.commit()
+
+    return {
+        "worker": worker,
+        "group": group,
+        "rank": rank
+    }
+
+
+def test_register_user(db, auth_data):
+
+    service = AuthUserService(db)
+
+    payload = {
+        "worker_id": auth_data["worker"].id,
+        "username": "mario",
+        "password": "123456"
+    }
+
+    created = service.register_user(payload)
+
+    assert created.id is not None
+    assert created.username == "mario"
+
+    assert bcrypt.checkpw(
+        "123456".encode("utf-8"),
+        created.password.encode("utf-8")
+    )
+
+
+def test_login_user_success(db, auth_data):
+
+    service = AuthUserService(db)
+
+    created = service.register_user({
+        "worker_id": auth_data["worker"].id,
+        "username": "admin",
+        "password": "123456"
+    })
+
+    auth_user = service.login_user(
+        username="admin",
+        password="123456"
+    )
+
+    assert auth_user is not None
+    assert auth_user.id == created.id
+
+
+def test_login_user_invalid_password(db, auth_data):
+
+    service = AuthUserService(db)
+
+    service.register_user({
+        "worker_id": auth_data["worker"].id,
+        "username": "admin",
+        "password": "123456"
+    })
+
+    auth_user = service.login_user(
+        username="admin",
+        password="wrongpassword"
+    )
+
+    assert auth_user is None
+
+
+def test_login_user_not_found(db):
+
+    service = AuthUserService(db)
+
+    auth_user = service.login_user(
+        username="ghost",
+        password="123456"
+    )
+
+    assert auth_user is None
+
+
+def test_get_auth_user_by_id(db, auth_data):
+
+    service = AuthUserService(db)
+
+    created = service.register_user({
+        "worker_id": auth_data["worker"].id,
+        "username": "mario",
+        "password": "123456"
+    })
+
+    found = service.get_auth_user_by_id(created.id)
+
+    assert found is not None
+    assert found.id == created.id
+
+
+def test_get_auth_user_with_worker_info(db, auth_data):
+
+    service = AuthUserService(db)
+
+    created = service.register_user({
+        "worker_id": auth_data["worker"].id,
+        "username": "mario",
+        "password": "123456"
+    })
+
+    result = service.get_auth_user_with_worker_info(created.id)
+
+    assert result is not None
+    assert result["username"] == "mario"
+    assert result["rank_level"] == 1
+    assert result["rank_name"] == "Empleado"
+
+
+def test_username_exists(db, auth_data):
+
+    service = AuthUserService(db)
+
+    service.register_user({
+        "worker_id": auth_data["worker"].id,
+        "username": "existinguser",
+        "password": "123456"
+    })
+
+    exists = service.username_exists("existinguser")
+
+    assert exists is True
+
+
+def test_username_not_exists(db):
+
+    service = AuthUserService(db)
+
+    exists = service.username_exists("ghostuser")
+
+    assert exists is False
