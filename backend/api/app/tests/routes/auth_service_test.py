@@ -16,7 +16,7 @@ class TestAuthEndpoints:
         group = Group(id=uuid.uuid4(), name="Backend", id_area=area.id, id_leader=None)
         worker = Worker(
             id=uuid.uuid4(), name="Mario", last_names="Julio",
-            age=20, gender="M", id_group=group.id, id_rank=rank.id, flag=False
+            age=20, gender="M", id_group=group.id, id_rank=rank.id,
         )
         db.add_all([rank, area, group, worker])
         db.commit()
@@ -43,7 +43,7 @@ class TestAuthEndpoints:
         group = Group(id=uuid.uuid4(), name="HR Team", id_area=area.id, id_leader=None)
         worker = Worker(
             id=uuid.uuid4(), name="Ana", last_names="Meza",
-            age=25, gender="F", id_group=group.id, id_rank=rank.id, flag=False
+            age=25, gender="F", id_group=group.id, id_rank=rank.id,
         )
         # bcrypt hash para "1234"
         import bcrypt
@@ -64,7 +64,7 @@ class TestAuthEndpoints:
         group = Group(id=uuid.uuid4(), name="Dev Team", id_area=area.id, id_leader=None)
         worker = Worker(
             id=uuid.uuid4(), name="Luis", last_names="Gonzalez",
-            age=30, gender="M", id_group=group.id, id_rank=rank.id, flag=False
+            age=30, gender="M", id_group=group.id, id_rank=rank.id,
         )
         import bcrypt
         hashed = bcrypt.hashpw(b"1234", bcrypt.gensalt()).decode()

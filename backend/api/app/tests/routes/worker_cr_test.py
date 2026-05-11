@@ -30,7 +30,6 @@ class TestWorkerEndpoints:
             last_names="Julio",
             age=20,
             gender="M",
-            flag=False,
             id_group=group.id,
             id_rank=rank.id
         )
@@ -76,7 +75,6 @@ class TestWorkerEndpoints:
             last_names="Meza",
             age=22,
             gender="F",
-            flag=False,
             id_group=group.id,
             id_rank=rank.id
         )
@@ -190,7 +188,6 @@ class TestWorkerEndpoints:
             last_names="Lopez",
             age=26,
             gender="M",
-            flag=False,
             id_group=group.id,
             id_rank=rank.id
         )

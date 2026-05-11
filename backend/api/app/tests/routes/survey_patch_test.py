@@ -18,7 +18,7 @@ class TestSurveyPatch:
         name="Encuesta Original",
         aperture_date=None,
         finishing_date=None,
-        status="Activo",
+        status="activa",
     ) -> Surveys:
         today = date.today()
         survey = Surveys(
@@ -50,29 +50,29 @@ class TestSurveyPatch:
         assert data["aperture_date"] == str(survey.aperture_date)
         assert data["finishing_date"] == str(survey.finishing_date)
 
-    def test_patch_status_to_inactivo(self, client, db, rrhh_user):
-        """Debe cambiar el estado a Inactivo."""
-        survey = self._make_survey(db, status="Activo")
+    def test_patch_status_to_finalizada(self, client, db, rrhh_user):
+        """Debe cambiar el estado a finalizada."""
+        survey = self._make_survey(db, status="activa")
 
         response = client.patch(
             f"/survey/{survey.id}",
-            json={"status": "Inactivo"},
+            json={"status": "finalizada"},
         )
 
         assert response.status_code == 200
-        assert response.json()["status"] == "Inactivo"
+        assert response.json()["status"] == "finalizada"
 
-    def test_patch_status_to_activo(self, client, db, rrhh_user):
-        """Debe cambiar el estado a Activo."""
-        survey = self._make_survey(db, status="Inactivo")
+    def test_patch_status_to_activa(self, client, db, rrhh_user):
+        """Debe cambiar el estado a activa."""
+        survey = self._make_survey(db, status="finalizada")
 
         response = client.patch(
             f"/survey/{survey.id}",
-            json={"status": "Activo"},
+            json={"status": "activa"},
         )
 
         assert response.status_code == 200
-        assert response.json()["status"] == "Activo"
+        assert response.json()["status"] == "activa"
 
     def test_patch_aperture_date_only(self, client, db, rrhh_user):
         """Debe actualizar solo la fecha de apertura."""
@@ -109,7 +109,7 @@ class TestSurveyPatch:
             f"/survey/{survey.id}",
             json={
                 "name": "Encuesta Modificada",
-                "status": "Inactivo",
+                "status": "finalizada",
                 "aperture_date": str(today),
                 "finishing_date": str(today + timedelta(days=14)),
             },
@@ -118,23 +118,23 @@ class TestSurveyPatch:
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Encuesta Modificada"
-        assert data["status"] == "Inactivo"
+        assert data["status"] == "finalizada"
         assert data["aperture_date"] == str(today)
         assert data["finishing_date"] == str(today + timedelta(days=14))
 
     def test_patch_idempotent_same_values(self, client, db, rrhh_user):
         """Enviar los mismos valores debe ser idempotente."""
-        survey = self._make_survey(db, name="Sin Cambio", status="Activo")
+        survey = self._make_survey(db, name="Sin Cambio", status="activa")
 
         response = client.patch(
             f"/survey/{survey.id}",
-            json={"name": "Sin Cambio", "status": "Activo"},
+            json={"name": "Sin Cambio", "status": "activa"},
         )
 
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Sin Cambio"
-        assert data["status"] == "Activo"
+        assert data["status"] == "activa"
 
     def test_patch_untouched_fields_remain(self, client, db, rrhh_user):
         """Los campos no enviados no deben cambiar."""
@@ -144,7 +144,7 @@ class TestSurveyPatch:
             name="Intacta",
             aperture_date=today,
             finishing_date=today + timedelta(days=5),
-            status="Activo",
+            status="activa",
         )
 
         client.patch(f"/survey/{survey.id}", json={"name": "Solo Nombre"})
@@ -152,7 +152,7 @@ class TestSurveyPatch:
         get_resp = client.get(f"/survey/{survey.id}")
         data = get_resp.json()
         assert data["name"] == "Solo Nombre"
-        assert data["status"] == "Activo"
+        assert data["status"] == "activa"
         assert data["aperture_date"] == str(today)
         assert data["finishing_date"] == str(today + timedelta(days=5))
 
@@ -175,7 +175,7 @@ class TestSurveyPatch:
         assert response.status_code == 422
 
     def test_patch_invalid_status_rejected(self, client, db, rrhh_user):
-        """Un estado que no sea 'Activo' o 'Inactivo' debe ser rechazado."""
+        """Un estado que no sea 'activa' o 'finalizada' debe ser rechazado."""
         survey = self._make_survey(db)
 
         response = client.patch(
@@ -185,11 +185,11 @@ class TestSurveyPatch:
         assert response.status_code == 422
 
     def test_patch_status_wrong_case_rejected(self, client, db, rrhh_user):
-        """El status es case-sensitive: 'activo' no es válido."""
+        """El status es case-sensitive: 'activa' no es válido."""
         survey = self._make_survey(db)
 
         response = client.patch(
-            f"/survey/{survey.id}", json={"status": "activo"}
+            f"/survey/{survey.id}", json={"status": "Activa"}
         )
 
         assert response.status_code == 422

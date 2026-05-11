@@ -91,7 +91,7 @@ def rrhh_user(db):
     group = Group(id=uuid.uuid4(), name="RRHH Team", id_area=area.id, id_leader=None)
     worker = Worker(
         id=uuid.uuid4(), name="Admin", last_names="RRHH",
-        age=30, gender="M", id_group=group.id, id_rank=rank.id, flag=False
+        age=30, gender="M", id_group=group.id, id_rank=rank.id, 
     )
     auth_user = AuthUser(
         id=uuid.uuid4(), worker_id=worker.id,
@@ -128,7 +128,7 @@ def leader_user(db):
     group = Group(id=uuid.uuid4(), name="Backend", id_area=area.id, id_leader=None)
     worker = Worker(
         id=uuid.uuid4(), name="Leader", last_names="Test",
-        age=30, gender="M", id_group=group.id, id_rank=rank.id, flag=False
+        age=30, gender="M", id_group=group.id, id_rank=rank.id, 
     )
     auth_user = AuthUser(
         id=uuid.uuid4(), worker_id=worker.id,

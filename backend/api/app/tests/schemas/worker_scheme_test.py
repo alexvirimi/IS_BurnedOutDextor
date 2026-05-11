@@ -31,7 +31,6 @@ class TestWorkerSchemas:
             last_names="Meza",
             age=21,
             gender="F",
-            flag=False,
             id_group=uuid.uuid4(),
             id_rank=uuid.uuid4()
         )
@@ -65,8 +64,7 @@ class TestWorkerSchemas:
             name="Luis",
             last_names="Gonzalez",
             age=28,
-            gender="M",
-            flag=False
+            gender="M"
         )
 
         assert worker.group is None

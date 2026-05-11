@@ -1,8 +1,8 @@
-
+import pytest
 import uuid
 from datetime import date
 
-from app.dbmodels.answer import Answer, AnswerEnum
+from app.dbmodels.answer import AnswerEnum
 from app.dbmodels.area import Area
 from app.dbmodels.groups import Group
 from app.dbmodels.question_surveys import QuestionSurveys
@@ -10,174 +10,184 @@ from app.dbmodels.questions import Question
 from app.dbmodels.ranks import Rank
 from app.dbmodels.surveys import Surveys
 from app.dbmodels.workers import Worker
+from app.dbmodels.questions import Question
+from app.dbmodels.surveys import Surveys
+from app.dbmodels.question_surveys import QuestionSurveys
+from app.dbmodels.psicometric_variable import PsicometricVariable
 
 
-class TestAnswersEndpoints:
+@pytest.fixture
+def endpoint_data(db):
 
-    def test_get_answers_success(self, client, db):
+    rank = Rank(
+        id=uuid.uuid4(),
+        rank_name="Empleado",
+        level=1
+    )
 
-        # Rank válido existente en el sistema
-        rank = Rank(
-            id=uuid.UUID("302e3d66-6935-417d-a066-1aaff3e14bd3"),
-            rank_name="comun",
-            level=1
-        )
+    area = Area(
+        id=uuid.uuid4(),
+        name="TI"
+    )
 
-        area = Area(
-            id=uuid.uuid4(),
-            name="Tecnología"
-        )
+    group = Group(
+        id=uuid.uuid4(),
+        name="Backend",
+        id_area=area.id,
+        id_leader=None
+    )
 
-        group = Group(
-            id=uuid.uuid4(),
-            name="Backend Team",
-            id_area=area.id,
-            id_leader=None
-        )
+    worker = Worker(
+        id=uuid.uuid4(),
+        name="Mario",
+        last_names="Julio",
+        age=20,
+        gender="M",
+        id_group=group.id,
+        id_rank=rank.id
+    )
 
-        worker = Worker(
-            id=uuid.uuid4(),
-            name="Mario",
-            last_names="Julio",
-            age=20,
-            gender="M",
-            id_group=group.id,
-            id_rank=rank.id,
-            flag=False
-        )
+    psicometric_variable = PsicometricVariable(
+        id=uuid.uuid4(),
+        name="Estrés"
+    )
 
-        survey = Surveys(
-            id=uuid.uuid4(),
-            name="Encuesta Burnout",
-            aperture_date=date.today(),
-            finishing_date=date.today(),
-            status="active"
-        )
+    survey = Surveys(
+        id=uuid.uuid4(),
+        name="Encuesta Burnout",
+        aperture_date=date(2025, 1, 1),
+        finishing_date=date(2025, 12, 31),
+        status="ACTIVA"
+    )
 
-        question = Question(
-            id=uuid.uuid4(),
-            text="¿Te sientes cansado?",
-            psicometric_variable="burnout"
-        )
+    question = Question(
+        id=uuid.uuid4(),
+        text="¿Pregunta?",
+        psicometric_variable_id=psicometric_variable.id
+    )
 
-        db.add_all([rank, area, group, worker, survey, question])
-        db.commit()
+    question_survey = QuestionSurveys(
+        id=uuid.uuid4(),
+        id_survey=survey.id,
+        id_question=question.id
+    )
 
-        question_survey = QuestionSurveys(
-            id=uuid.uuid4(),
-            id_survey=survey.id,
-            id_question=question.id
-        )
+    db.add_all([
+        rank,
+        area,
+        group,
+        worker,
+        psicometric_variable,
+        survey,
+        question,
+        question_survey
+    ])
 
-        db.add(question_survey)
-        db.commit()
+    db.commit()
 
-        answer = Answer(
-            id=uuid.uuid4(),
-            id_worker=worker.id,
-            id_group=group.id,
-            id_area=area.id,
-            id_question_survey=question_survey.id,
-            value=AnswerEnum.SIEMPRE,
-            created_at=date.today()
-        )
+    return {
+        "worker": worker,
+        "group": group,
+        "area": area,
+        "survey": survey,
+        "question_survey": question_survey
+    }
 
-        db.add(answer)
-        db.commit()
 
-        response = client.get("/answers/")
+def test_read_answers(client):
 
-        assert response.status_code == 200
+    response = client.get("/answers/")
 
-        data = response.json()
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
 
-        assert len(data) == 1
-        assert data[0]["value"] == AnswerEnum.SIEMPRE
 
-    def test_get_answer_by_id_success(self, client, db):
+def test_create_answer_rrhh(client, rrhh_user, endpoint_data):
 
-        rank = Rank(
-            id=uuid.UUID("36615516-1912-4229-823d-69900b39248a"),
-            rank_name="lider",
-            level=2
-        )
+    response = client.post(
+        "/answers/",
+        data={
+            "id_worker": str(endpoint_data["worker"].id),
+            "id_group": str(endpoint_data["group"].id),
+            "id_area": str(endpoint_data["area"].id),
+            "id_question_survey": str(endpoint_data["question_survey"].id),
+            "value": AnswerEnum.SIEMPRE
+        }
+    )
 
-        area = Area(
-            id=uuid.uuid4(),
-            name="RRHH"
-        )
+    assert response.status_code == 201
 
-        group = Group(
-            id=uuid.uuid4(),
-            name="RRHH Team",
-            id_area=area.id,
-            id_leader=None
-        )
+    data = response.json()
 
-        worker = Worker(
-            id=uuid.uuid4(),
-            name="Ana",
-            last_names="Meza",
-            age=25,
-            gender="F",
-            id_group=group.id,
-            id_rank=rank.id,
-            flag=False
-        )
+    assert data["id_worker"] == str(endpoint_data["worker"].id)
+    assert data["value"] == AnswerEnum.SIEMPRE
 
-        survey = Surveys(
-            id=uuid.uuid4(),
-            name="Encuesta Estrés",
-            aperture_date=date.today(),
-            finishing_date=date.today(),
-            status="active"
-        )
 
-        question = Question(
-            id=uuid.uuid4(),
-            text="¿Tienes estrés?",
-            psicometric_variable="stress"
-        )
+def test_create_answer_without_rrhh(client, leader_user, endpoint_data):
 
-        db.add_all([rank, area, group, worker, survey, question])
-        db.commit()
+    response = client.post(
+        "/answers/",
+        data={
+            "id_worker": str(endpoint_data["worker"].id),
+            "id_group": str(endpoint_data["group"].id),
+            "id_area": str(endpoint_data["area"].id),
+            "id_question_survey": str(endpoint_data["question_survey"].id),
+            "value": AnswerEnum.A_VECES
+        }
+    )
 
-        question_survey = QuestionSurveys(
-            id=uuid.uuid4(),
-            id_survey=survey.id,
-            id_question=question.id
-        )
+    assert response.status_code == 403
 
-        db.add(question_survey)
-        db.commit()
 
-        answer = Answer(
-            id=uuid.uuid4(),
-            id_worker=worker.id,
-            id_group=group.id,
-            id_area=area.id,
-            id_question_survey=question_survey.id,
-            value=AnswerEnum.A_VECES,
-            created_at=date.today()
-        )
+def test_respond_to_question(client, leader_user, endpoint_data):
 
-        db.add(answer)
-        db.commit()
+    response = client.post(
+        "/answers/respond",
+        data={
+            "id_question_survey": str(endpoint_data["question_survey"].id),
+            "value": AnswerEnum.CASI_SIEMPRE
+        }
+    )
 
-        response = client.get(f"/answers/{answer.id}")
+    assert response.status_code == 201
 
-        assert response.status_code == 200
+    data = response.json()
 
-        data = response.json()
+    assert data["value"] == AnswerEnum.CASI_SIEMPRE
 
-        assert data["id"] == str(answer.id)
-        assert data["value"] == AnswerEnum.A_VECES
 
-    def test_get_answer_not_found(self, client):
+def test_read_answer_by_id(client, rrhh_user, endpoint_data):
 
-        fake_id = uuid.uuid4()
+    create_response = client.post(
+        "/answers/",
+        data={
+            "id_worker": str(endpoint_data["worker"].id),
+            "id_group": str(endpoint_data["group"].id),
+            "id_area": str(endpoint_data["area"].id),
+            "id_question_survey": str(endpoint_data["question_survey"].id),
+            "value": AnswerEnum.SIEMPRE
+        }
+    )
 
-        response = client.get(f"/answers/{fake_id}")
+    answer_id = create_response.json()["id"]
 
-        assert response.status_code == 404
-        assert response.json()["detail"] == "Respuesta no encontrada"
+    response = client.get(f"/answers/{answer_id}")
+
+    assert response.status_code == 200
+    assert response.json()["id"] == answer_id
+
+
+def test_read_answer_not_found(client):
+
+    response = client.get(f"/answers/{uuid.uuid4()}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Respuesta no encontrada"
+
+
+def test_read_my_answers(client, leader_user):
+
+    response = client.get("/answers/my/all")
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
