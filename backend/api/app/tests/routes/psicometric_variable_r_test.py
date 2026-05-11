@@ -1,22 +1,33 @@
-# app/tests/routes/psicometric_variable_r_test.py
 import uuid
+import pytest
 
 from app.dbmodels.psicometric_variable import PsicometricVariable
 
 
-class TestPsicometricVariableEndpoints:
+@pytest.fixture
+def psicometric_variable_data(db):
 
-    def test_get_psicometric_variables_success(self, client, db):
-        variable = PsicometricVariable(
-            id=uuid.uuid4(),
-            name="Stress"
-        )
-        db.add(variable)
-        db.commit()
+    variable = PsicometricVariable(
+        id=uuid.uuid4(),
+        name="Estrés"
+    )
 
-        response = client.get("/psicometric_variable/")
-        assert response.status_code == 200
+    db.add(variable)
+    db.commit()
 
-        data = response.json()
-        assert len(data) >= 1
-        assert any(v["name"] == "Stress" for v in data)
+    return variable
+
+
+def test_read_psicometric_variables(
+    client,
+    psicometric_variable_data
+):
+    response = client.get("/psicometric_variable/")
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert isinstance(data, list)
+    assert len(data) >= 1
+
+    assert data[0]["name"] == "Estrés"
