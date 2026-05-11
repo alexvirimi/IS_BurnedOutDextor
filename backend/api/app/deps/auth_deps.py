@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.auth_scheme import CurrentUserData
 from typing import List
-from core.security import decode_access_token
+from app.security import decode_access_token
 
 # Swagger/OpenAPI security scheme
 auth_scheme = APIKeyCookie(

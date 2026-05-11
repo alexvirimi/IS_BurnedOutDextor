@@ -20,6 +20,9 @@ class Settings:
     FIRST_SUPERUSER: str = os.getenv("FIRST_SUPERUSER", "admin@inbudex.com")
     FIRST_SUPERUSER_PASSWORD: str = os.getenv("FIRST_SUPERUSER_PASSWORD", "admin123")
 
+    # JWT_SECRET_KEY
+    SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+
 
 @lru_cache()
 def get_settings() -> Settings:
