@@ -25,10 +25,15 @@ export interface Survey {
   status: string;
 }
 
+export interface PsicometricVariable {
+  id: string;
+  name: string;
+}
+
 export interface Question {
   id: string;
   text: string;
-  psicometric_variable: string;
+  psicometric_variable: PsicometricVariable | string;
 }
 
 export interface QuestionSurveyRelation {

@@ -5,6 +5,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from uuid import UUID
 from datetime import date
 from typing import Literal, Optional
+from app.schemas.psicometric_variable_scheme import PsicometricVariableResponse
 
 
 class SurveyCreate(BaseModel):
@@ -72,7 +73,7 @@ class SurveyUpdate(BaseModel):
 class QuestionInSurvey(BaseModel):
     id: UUID
     text: str
-    psicometric_variable: str
+    psicometric_variable: PsicometricVariableResponse
     model_config = {"from_attributes": True}
 
 
