@@ -665,30 +665,27 @@ export function HRCrearEncuesta() {
             </p>
 
             {/* Loading linked questions */}
+            <div className="flex-1 overflow-y-auto mb-4">
+              {/* Already-linked pills (existing survey mode) */}
 
-            {loadingLinked ? (
-              <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
-                <Loader2 size={16} className="animate-spin" />
+              {!isFromScratch && linkedQuestionIds.size > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs text-muted-foreground font-sans mb-2">
+                    Ya vinculadas ({linkedQuestionIds.size}):
+                  </p>
 
-                <span className="text-sm font-sans">
-                  Cargando preguntas vinculadas...
-                </span>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto mb-4">
-                {/* Already-linked pills (existing survey mode) */}
+                  {loadingLinked ? (
+                    <div className="flex items-center gap-2 px-3 py-2 border border-primary/30 rounded-lg">
+                      <Loader2 size={16} className="animate-spin" />
 
-                {!isFromScratch && linkedQuestionIds.size > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs text-muted-foreground font-sans mb-2">
-                      Ya vinculadas ({linkedQuestionIds.size}):
-                    </p>
-
+                      <span className="text-sm font-sans">
+                        Cargando preguntas vinculadas...
+                      </span>
+                    </div>
+                  ) : (
                     <div className="space-y-1">
                       {questions
-
                         .filter((q) => linkedQuestionIds.has(q.id))
-
                         .map((q) => (
                           <div
                             key={q.id}
@@ -698,20 +695,25 @@ export function HRCrearEncuesta() {
                               size={12}
                               className="text-primary flex-shrink-0"
                             />
-
                             <span className="text-xs text-foreground truncate">
                               {q.text}
                             </span>
                           </div>
                         ))}
                     </div>
+                  )}
 
-                    <hr className="my-3 border-border" />
-                  </div>
-                )}
+                  <hr className="my-3 border-border" />
+                </div>
+              )}
 
-                {/* QuestionSearchWithCreate handles search + create for available questions */}
+              {/* QuestionSearchWithCreate handles search + create for available questions */}
 
+              {loadingLinked ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+                  <Loader2 size={32} className="animate-spin" />
+                </div>
+              ) : (
                 <QuestionSearchWithCreate
                   questions={modalAvailableQuestions}
                   selectedIds={
@@ -727,8 +729,8 @@ export function HRCrearEncuesta() {
                   onToggle={toggleQuestion}
                   onCreated={handleQuestionCreated}
                 />
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Footer */}
 
@@ -742,7 +744,7 @@ export function HRCrearEncuesta() {
               <button
                 onClick={handleConfirmSurvey}
                 disabled={selectedQuestionIds.size === 0}
-                className={`px-6 py-2 rounded-lg font-medium text-sm transition-colors ${
+                className={`px-6 py-2 rounded-lg font-medium text-white text-sm transition-colors ${
                   selectedQuestionIds.size > 0
                     ? "bg-accent text-foreground hover:bg-accent/80"
                     : "bg-secondary text-muted-foreground cursor-not-allowed"

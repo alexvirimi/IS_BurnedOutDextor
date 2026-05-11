@@ -154,28 +154,49 @@ export function QuestionSearchWithCreate({
   return (
     <div className={`flex flex-col gap-2 p-1 ${className}`}>
       {/* ── Search input ── */}
-      <div className="relative">
-        <Search
-          size={15}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-        />
-        <input
-          type="text"
-          placeholder="Buscar preguntas disponibles..."
-          disabled={filterDisabled}
-          value={searchText}
-          onChange={(e) => {
-            setSearchText(e.target.value);
-            // If user changes text while in create mode, keep mode open but reset variable
-            if (createMode) {
-              setSelectedVariableId("");
-              setCreateError(null);
-            }
-          }}
-          className={`w-full pl-9 pr-4 py-2 border border-foreground/30 rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring
+      <div className="flex gap-2">
+        <div className="flex-1 items-center gap-2">
+          <div className="relative ">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              type="text"
+              placeholder="Buscar preguntas disponibles..."
+              disabled={filterDisabled}
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                // If user changes text while in create mode, keep mode open but reset variable
+                if (createMode) {
+                  setSelectedVariableId("");
+                  setCreateError(null);
+                }
+              }}
+              className={`w-full pl-9 pr-4 py-2 border border-foreground/30 rounded-lg bg-background text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring
             ${filterDisabled ? "bg-secondary/70" : ""}
             `}
-        />
+            />
+          </div>
+        </div>
+        {/* ── Persistent "crear nueva pregunta" CTA (always visible when not in create mode) ── */}
+        {!createMode && (
+          <button
+            onClick={openCreateMode}
+            className="group flex items-center rounded-lg border border-dashed border-foreground/30 px-3 py-2 text-sm
+            text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-BUTTONS_COLORS"
+          >
+            <Plus size={14} className="shrink-0" />
+
+            <span
+              className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 group-hover:max-w-xs
+              group-hover:opacity-100 transition-all duration-300"
+            >
+              <span className="ml-1.5">Crear nueva pregunta</span>
+            </span>
+          </button>
+        )}
       </div>
 
       {/* ── Question list ── */}
@@ -241,17 +262,6 @@ export function QuestionSearchWithCreate({
             </div>
           ) : null}
         </div>
-      )}
-
-      {/* ── Persistent "crear nueva pregunta" CTA (always visible when not in create mode) ── */}
-      {!createMode && (
-        <button
-          onClick={openCreateMode}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-foreground/30 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors mt-1"
-        >
-          <Plus size={14} />
-          Crear nueva pregunta
-        </button>
       )}
 
       {/* ── Inline create form ── */}
