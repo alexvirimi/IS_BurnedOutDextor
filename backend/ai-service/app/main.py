@@ -1,3 +1,5 @@
+from wsgiref import headers
+
 from fastapi import FastAPI, HTTPException
 from app.schemas.burnout_scheme import WorkerInput, BurnoutPredictionResult
 from app.core.model_loader import ml_loader
@@ -5,7 +7,7 @@ import uvicorn
 import httpx
 import os
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8001")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 API_KEY = os.getenv("API_KEY") # auth
 
 app = FastAPI(
@@ -68,7 +70,7 @@ async def predict(input_data: WorkerInput):
 
             response = await client.post(
                 f"{API_BASE_URL}/results",
-                data=store_data,
+                json=store_data,
                 headers=headers
             )
             

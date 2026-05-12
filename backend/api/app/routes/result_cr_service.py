@@ -1,137 +1,189 @@
-# Este módulo define los endpoints para gestionar resultados de encuestas.
-# Los resultados representan los puntajes de burnout obtenidos por trabajadores al completar encuestas.
-# Implementa control de acceso basado en roles:
-# - Nivel 1 (común): Solo ve sus propios resultados
-# - Nivel 2 (líder): Ve resultados de su grupo
-# - Nivel 3 (RRHH): Ve todos los resultados
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.servicemodels.result_service import ResultService
-from app.schemas.result_scheme import ResultResponse, ResultCreate, UpdateFlagRequest
-from app.deps.auth_deps import get_current_user, require_role
-from app.schemas.auth_scheme import CurrentUserData
 from uuid import UUID
 
-router = APIRouter(prefix="/results", tags=["Results"])
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status
+)
 
-@router.get("/", response_model=list[ResultResponse])
-def read_results(
-    current_user: CurrentUserData = Depends(get_current_user),
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+
+from app.schemas.auth_scheme import CurrentUserData
+
+from app.schemas.result_scheme import (
+    ResultResponse,
+    ResultCreate,
+    UpdateFlagRequest
+)
+
+from app.servicemodels.result_service import ResultService
+
+from app.deps.auth_deps import (
+    get_current_user
+)
+
+from app.deps.internal_deps import (
+    verify_internal_api_key
+)
+
+router = APIRouter(
+    prefix="/results",
+    tags=["Results"]
+)
+
+
+@router.post(
+    "/",
+    response_model=ResultResponse,
+    status_code=status.HTTP_201_CREATED
+)
+def create_result(
+    payload: ResultCreate,
+    _: None = Depends(
+        verify_internal_api_key
+    ),
     db: Session = Depends(get_db)
 ):
-    # Endpoint para obtener resultados según el rol del usuario.
-    # Nivel 1 retorna solo sus resultados, nivel 2 retorna su grupo, nivel 3 retorna todos.
+
     service = ResultService(db)
-    
-    # Si el usuario es de nivel 1 (común), retorna solo sus propios resultados
+
+    return service.create_result(
+        payload.model_dump()
+    )
+
+@router.get(
+    "/",
+    response_model=list[ResultResponse]
+)
+def read_results(
+    current_user: CurrentUserData = Depends(
+        get_current_user
+    ),
+    db: Session = Depends(get_db)
+):
+
+    service = ResultService(db)
+
     if current_user.rank_level == 1:
-        return service.get_results_by_worker(current_user.worker_id)
-    
-    # Si el usuario es de nivel 2 (líder), retorna resultados de su grupo
+
+        return service.get_results_by_worker(
+            current_user.worker_id
+        )
+
     elif current_user.rank_level == 2:
-        return service.get_results_by_group(current_user.id_group)
-    
-    # Si el usuario es de nivel 3 (RRHH), retorna todos los resultados
+
+        return service.get_results_by_group(
+            current_user.id_group
+        )
+
     elif current_user.rank_level == 3:
+
         return service.get_results()
-    
-    # Por seguridad, si no es ninguno de estos niveles, lanza excepción
+
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="No tienes permiso para ver resultados"
     )
 
-@router.get("/{result_id}", response_model=ResultResponse)
+
+@router.get(
+    "/{result_id}",
+    response_model=ResultResponse
+)
 def read_result(
     result_id: UUID,
-    current_user: CurrentUserData = Depends(get_current_user),
+    current_user: CurrentUserData = Depends(
+        get_current_user
+    ),
     db: Session = Depends(get_db)
 ):
-    # Endpoint para obtener un resultado específico.
-    # Valida permisos según el rol del usuario.
+
     service = ResultService(db)
-    result = service.get_result_by_id(result_id)
+
+    result = service.get_result_by_id(
+        result_id
+    )
+
     if not result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resultado no encontrado")
-    
-    # Valida permisos según el rol
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resultado no encontrado"
+        )
+
     if current_user.rank_level == 1:
-        # Nivel 1: Solo puede ver sus propios resultados
+
         if result.id_worker != current_user.worker_id:
+
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes permiso para ver este resultado"
             )
+
     elif current_user.rank_level == 2:
-        # Nivel 2: Solo puede ver resultados de su grupo
+
         if result.id_group != current_user.id_group:
+
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tienes permiso para ver este resultado. Es de otro grupo."
+                detail="No tienes permiso para ver este resultado"
             )
-    # Nivel 3 (RRHH): Puede ver cualquier resultado
-    
+
     return result
 
-@router.post("/", response_model=ResultResponse, status_code=status.HTTP_201_CREATED)
-def create_result(
-    payload: ResultCreate = Depends(ResultCreate.as_form),
-    current_user: CurrentUserData = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Endpoint para crear un nuevo resultado.
-    Solo usuarios de nivel 2 (líderes) y 3 (RRHH) pueden crear resultados.
-    """
-    # Valida que el usuario tenga permiso para crear resultados
-    if current_user.rank_level not in [2, 3]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permiso para crear resultados. Solo líderes y RRHH pueden crear resultados."
-        )
-    
-    service = ResultService(db)
-    return service.create_result(payload.model_dump())
 
-@router.patch("/{result_id}/flag", response_model=ResultResponse, status_code=status.HTTP_200_OK)
+@router.patch(
+    "/{result_id}/flag",
+    response_model=ResultResponse,
+    status_code=status.HTTP_200_OK
+)
 def update_result_flag(
     result_id: UUID,
     payload: UpdateFlagRequest,
-    current_user: CurrentUserData = Depends(get_current_user),
+    current_user: CurrentUserData = Depends(
+        get_current_user
+    ),
     db: Session = Depends(get_db)
 ):
-    # Endpoint para actualizar el flag de un resultado.
-    # Restricciones: Nivel 2 (líder) solo de su grupo, Nivel 3 (RRHH) NO puede.
+
     service = ResultService(db)
-    
-    # Valida que el usuario tenga permiso para actualizar el flag
+
     if current_user.rank_level == 3:
-        # RRHH NO puede modificar el flag
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="El personal de RRHH no puede modificar el flag de resultados"
+            detail="RRHH no puede modificar flags"
         )
-    elif current_user.rank_level != 2:
-        # Solo nivel 2 (líderes) pueden modificar el flag
+
+    if current_user.rank_level != 2:
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permiso para actualizar el flag de resultados. Solo líderes pueden hacer esto."
+            detail="Solo líderes pueden modificar flags"
         )
-    
-    # Obtiene el resultado a actualizar
-    result = service.get_result_by_id(result_id)
+
+    result = service.get_result_by_id(
+        result_id
+    )
+
     if not result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resultado no encontrado")
-    
-    # Valida que el líder solo puede actualizar el flag de resultados de su grupo
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resultado no encontrado"
+        )
+
     if result.id_group != current_user.id_group:
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo puedes actualizar el flag de resultados de tu grupo"
+            detail="Solo puedes modificar resultados de tu grupo"
         )
-    
-    # Actualiza el flag
-    updated_result = service.update_result_flag(result_id, payload.flag)
-    return updated_result
+
+    return service.update_result_flag(
+        result_id,
+        payload.flag
+    )
