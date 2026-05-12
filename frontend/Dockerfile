@@ -14,7 +14,7 @@ COPY . .
 
 # Build the Next.js application with API URL
 # Default to production URL, can be overridden with --build-arg
-ARG NEXT_PUBLIC_API_URL=https://is-burnedoutdextor-api-1.onrender.com
+ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 RUN pnpm run build
