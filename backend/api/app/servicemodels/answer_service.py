@@ -5,197 +5,181 @@ from app.dbmodels import Answer
 from sqlalchemy.orm import Session
 from uuid import UUID
 from fastapi import HTTPException, status
-from app.dbmodels import Group, Worker, Area, QuestionSurveys
+from app.dbmodels import Group, Worker, Area, QuestionSurveys, Surveys
 from datetime import date
+
+# ─── Constante canónica ───────────────────────────────────────────────────────
+# Una sola fuente de verdad para el valor de estado. Si el backend cambia el
+# string (ej. "FINALIZADA") solo hay que actualizar aquí.
+_STATUS_FINALIZADA = "finalizada"
+
+
+def _assert_survey_is_open(survey: Surveys) -> None:
+    """
+    Lanza HTTP 422 si la encuesta ya fue finalizada.
+    Reutiliza el patrón de HTTPException existente en el proyecto.
+    Normaliza a minúsculas para evitar fallos por mayúsculas inconsistentes.
+    """
+    if survey.status.strip().lower() == _STATUS_FINALIZADA:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"La encuesta '{survey.name}' ya fue finalizada "
+                "y no acepta nuevas respuestas."
+            ),
+        )
+
 
 class AnswerService:
     def __init__(self, db: Session):
         self.repo = ur(Answer, db)
-        self.db = db         
+        self.db = db
 
     def get_answers(self):
-        return self.repo.get_all()       
+        return self.repo.get_all()
 
     def get_answer_by_id(self, id: UUID):
         return self.repo.get_by_id(id)
 
     def create_answer(self, data: dict):
+        """Ruta RRHH — valida todos los FK y el estado de la encuesta."""
         group = ur(Group, self.db).get_by_id(data["id_group"])
         if not group:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="El grupo no existe"
+                detail="El grupo no existe",
             )
+
         worker = ur(Worker, self.db).get_by_id(data["id_worker"])
         if not worker:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="El trabajador no existe"
+                detail="El trabajador no existe",
             )
+
         area = ur(Area, self.db).get_by_id(data["id_area"])
         if not area:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="El área no existe"
+                detail="El área no existe",
             )
-        question_survey = ur(QuestionSurveys, self.db).get_by_id(data["id_question_survey"])
+
+        question_survey = ur(QuestionSurveys, self.db).get_by_id(
+            data["id_question_survey"]
+        )
         if not question_survey:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="La pregunta no existe"
-            )    
-        return self.repo.create(data)
-    
-    def create_bulk_answers(
-        self,
-        worker_id: UUID,
-        survey_id: UUID,
-        answers_data: list[dict]
-    ):
-        """
-        Crea múltiples respuestas de una encuesta de una vez.
-        """
-
-        from app.dbmodels import Surveys
-
-        # Validar worker
-        worker = ur(Worker, self.db).get_by_id(worker_id)
-
-        if not worker:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="El trabajador no existe"
+                detail="La pregunta no existe",
             )
 
-        # Validar encuesta
-        survey = ur(Surveys, self.db).get_by_id(survey_id)
-
+        # ── Validación: encuesta no finalizada ───────────────────────────────
+        survey = ur(Surveys, self.db).get_by_id(question_survey.id_survey)
         if not survey:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="La encuesta no existe"
+                detail="La encuesta asociada no existe",
             )
+        _assert_survey_is_open(survey)
 
-        # Evitar responder encuesta dos veces
-        existing_answers = self.db.query(Answer).join(
-            QuestionSurveys
-        ).filter(
-            Answer.id_worker == worker_id,
-            QuestionSurveys.id_survey == survey_id
-        ).first()
+        return self.repo.create(data)
 
-        if existing_answers:
+    def create_bulk_answers(
+        self, worker_id: UUID, survey_id: UUID, answers_data: list[dict]
+    ):
+        """
+        Crea múltiples respuestas de una encuesta de una vez.
+        Valida el estado antes de procesar cualquier respuesta.
+        """
+        worker = ur(Worker, self.db).get_by_id(worker_id)
+        if not worker:
             raise HTTPException(
-                status_code=400,
-                detail="Ya respondiste esta encuesta"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="El trabajador no existe",
             )
 
-        # Obtener group y area
-        group = ur(Group, self.db).get_by_id(worker.id_group)
-
-        if not group:
+        survey = ur(Surveys, self.db).get_by_id(survey_id)
+        if not survey:
             raise HTTPException(
-                status_code=404,
-                detail="El grupo del trabajador no existe"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="La encuesta no existe",
             )
 
-        area = ur(Area, self.db).get_by_id(group.id_area)
-
-        if not area:
-            raise HTTPException(
-                status_code=404,
-                detail="El área del grupo no existe"
-            )
+        # ── Validación: encuesta no finalizada ───────────────────────────────
+        # Se verifica UNA SOLA VEZ antes del loop, no en cada iteración.
+        _assert_survey_is_open(survey)
 
         created_answers = []
-
         for answer_data in answers_data:
-
-            # Validar que la pregunta pertenece a la encuesta
-            question_survey = self.db.query(
-                QuestionSurveys
-            ).filter(
-                QuestionSurveys.id == answer_data["id_question_survey"],
-                QuestionSurveys.id_survey == survey_id
-            ).first()
-
+            question_survey = ur(QuestionSurveys, self.db).get_by_id(
+                answer_data["id_question_survey"]
+            )
             if not question_survey:
                 raise HTTPException(
-                    status_code=404,
-                    detail=f"La pregunta {answer_data['id_question_survey']} no pertenece a esta encuesta"
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=(
+                        f"La pregunta {answer_data['id_question_survey']} "
+                        "no existe en la encuesta"
+                    ),
                 )
 
             answer_create_data = {
                 "id_worker": worker_id,
                 "id_group": worker.id_group,
-                "id_area": group.id_area,
+                "id_area": (
+                    worker.group.id_area if worker.group else None
+                ),
                 "id_question_survey": answer_data["id_question_survey"],
                 "value": answer_data["value"],
-                "created_at": date.today()
+                "created_at": date.today(),
             }
-
-            created_answer = self.repo.create(answer_create_data)
-
-            created_answers.append(created_answer)
+            created_answers.append(self.repo.create(answer_create_data))
 
         return created_answers
-    
+
     def create_answer_from_user(
-        self,
-        worker_id: UUID,
-        question_survey_id: UUID,
-        value: int
+        self, worker_id: UUID, question_survey_id: UUID, value: int
     ):
         """
         Crea una respuesta desde el usuario autenticado.
+        Valida el estado de la encuesta antes de persistir.
         """
-
         worker = ur(Worker, self.db).get_by_id(worker_id)
-
         if not worker:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="El trabajador no existe"
+                detail="El trabajador no existe",
             )
 
         group = ur(Group, self.db).get_by_id(worker.id_group)
-
         if not group:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="El grupo del trabajador no existe"
+                detail="El grupo del trabajador no existe",
             )
 
         area = ur(Area, self.db).get_by_id(group.id_area)
-
         if not area:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="El área del grupo no existe"
+                detail="El área del grupo no existe",
             )
 
-        question_survey = ur(
-            QuestionSurveys,
-            self.db
-        ).get_by_id(question_survey_id)
-
+        question_survey = ur(QuestionSurveys, self.db).get_by_id(question_survey_id)
         if not question_survey:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="La pregunta en la encuesta no existe"
+                detail="La pregunta en la encuesta no existe",
             )
 
-        # Evitar respuestas duplicadas
-        existing_answer = self.db.query(Answer).filter(
-            Answer.id_worker == worker_id,
-            Answer.id_question_survey == question_survey_id
-        ).first()
-
-        if existing_answer:
+        # ── Validación: encuesta no finalizada ───────────────────────────────
+        survey = ur(Surveys, self.db).get_by_id(question_survey.id_survey)
+        if not survey:
             raise HTTPException(
-                status_code=400,
-                detail="Ya respondiste esta pregunta"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="La encuesta asociada no existe",
             )
+        _assert_survey_is_open(survey)
 
         answer_data = {
             "id_worker": worker_id,
@@ -203,26 +187,24 @@ class AnswerService:
             "id_area": group.id_area,
             "id_question_survey": question_survey_id,
             "value": value,
-            "created_at": date.today()
+            "created_at": date.today(),
         }
-
         return self.repo.create(answer_data)
-    
+
     def get_answers_by_worker(self, worker_id: UUID):
-        """Obtiene todas las respuestas de un usuario"""
         return self.db.query(Answer).filter(Answer.id_worker == worker_id).all()
-    
+
     def get_answers_by_survey(self, survey_id: UUID):
-        """Obtiene todas las respuestas de una encuesta"""
-        return self.db.query(Answer).join(
-            QuestionSurveys
-        ).filter(QuestionSurveys.id_survey == survey_id).all()
-    
+        return (
+            self.db.query(Answer)
+            .join(QuestionSurveys)
+            .filter(QuestionSurveys.id_survey == survey_id)
+            .all()
+        )
+
     def create_answers_bulk(self, answers: list):
-        # Crear múltiples respuestas en lote
         results = []
         for answer in answers:
             created = self.create_answer(answer.model_dump())
             results.append(created)
         return results
-    

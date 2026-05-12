@@ -29,6 +29,9 @@ export function PMEncuestasView({ userName }: PMEncuestasViewProps) {
     handleNext,
     handlePrev,
     handleClose,
+    // submission
+    submitError,
+    isSubmitting,
   } = useEncuestas();
 
   useEffect(() => {
@@ -97,7 +100,8 @@ export function PMEncuestasView({ userName }: PMEncuestasViewProps) {
             <div className="bg-background rounded-xl p-6 w-full max-w-2xl relative">
               <button
                 onClick={handleClose}
-                className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${C.button}`}
+                disabled={isSubmitting}
+                className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${C.button} disabled:opacity-40`}
               >
                 <X size={18} />
               </button>
@@ -109,7 +113,6 @@ export function PMEncuestasView({ userName }: PMEncuestasViewProps) {
                 {selectedEncuesta.nombre.toUpperCase()}
               </h2>
 
-              {/* Loading questions */}
               {loadingQuestions ? (
                 <div className="flex items-center justify-center gap-3 py-16 text-muted-foreground">
                   <Loader2 size={20} className="animate-spin" />
@@ -143,17 +146,17 @@ export function PMEncuestasView({ userName }: PMEncuestasViewProps) {
                       {currentPregunta?.texto}
                     </p>
 
-                    {/* Scale options — all questions are escala */}
                     <div className="flex justify-between gap-2">
                       {[1, 2, 3, 4, 5].map((value) => (
                         <button
                           key={value}
                           onClick={() => handleRespuesta(value)}
+                          disabled={isSubmitting}
                           className={`flex-1 py-4 rounded-lg border-2 transition-all ${
                             currentRespuesta === value
                               ? `${C.buttonActive} border-2`
                               : "border-foreground/30 text-foreground hover:border-primary"
-                          }`}
+                          } disabled:opacity-50`}
                         >
                           {value}
                         </button>
@@ -161,18 +164,25 @@ export function PMEncuestasView({ userName }: PMEncuestasViewProps) {
                     </div>
                   </div>
 
-                  <div className="flex justify-between text-sm text-muted-foreground mb-8">
+                  <div className="flex justify-between text-sm text-muted-foreground mb-4">
                     <span>Muy en desacuerdo</span>
                     <span>Muy de acuerdo</span>
                   </div>
+
+                  {/* Submit error */}
+                  {submitError && (
+                    <div className="mb-4 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs font-sans">
+                      {submitError}
+                    </div>
+                  )}
 
                   {/* Navigation */}
                   <div className="flex justify-between">
                     <button
                       onClick={handlePrev}
-                      disabled={currentQuestion === 0}
+                      disabled={currentQuestion === 0 || isSubmitting}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                        currentQuestion === 0
+                        currentQuestion === 0 || isSubmitting
                           ? "text-muted-foreground cursor-not-allowed"
                           : `${C.button}`
                       }`}
@@ -180,19 +190,26 @@ export function PMEncuestasView({ userName }: PMEncuestasViewProps) {
                       <ChevronLeft size={20} />
                       Anterior
                     </button>
+
                     <button
                       onClick={handleNext}
-                      disabled={currentRespuesta === undefined}
+                      disabled={currentRespuesta === undefined || isSubmitting}
                       className={`flex items-center gap-2 px-6 py-2 rounded-lg transition-colors ${
-                        currentRespuesta === undefined
+                        currentRespuesta === undefined || isSubmitting
                           ? "bg-secondary text-muted-foreground cursor-not-allowed"
                           : `${C.button}`
                       }`}
                     >
-                      {currentQuestion === selectedEncuesta.preguntas.length - 1
-                        ? "Finalizar"
-                        : "Siguiente"}
-                      <ChevronRight size={20} />
+                      {isSubmitting && (
+                        <Loader2 size={16} className="animate-spin" />
+                      )}
+                      {isSubmitting
+                        ? "Enviando..."
+                        : currentQuestion ===
+                            selectedEncuesta.preguntas.length - 1
+                          ? "Finalizar"
+                          : "Siguiente"}
+                      {!isSubmitting && <ChevronRight size={20} />}
                     </button>
                   </div>
                 </>

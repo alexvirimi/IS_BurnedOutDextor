@@ -1,6 +1,6 @@
-// ─── lib/api/context.tsx ─────────────────────────────────────────────────────
-// Añade apiPostJson para endpoints que esperan application/json (no FormData).
-// Mantiene todos los helpers existentes sin modificación.
+// ─── API helpers ──────────────────────────────────────────────────────────────
+// credentials: "include" sends the HttpOnly cookie automatically.
+// No auth header needed — the backend reads identity from the JWT cookie.
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -25,7 +25,10 @@ export async function apiFetch<T>(path: string): Promise<T> {
   return res.json();
 }
 
-/** POST con FormData — para endpoints que usan Depends(Schema.as_form) */
+/**
+ * POST with a multipart/form-data body (legacy — used for most endpoints
+ * that declare FastAPI `as_form` dependencies).
+ */
 export async function apiPost<T>(
   path: string,
   body: Record<string, string>,
@@ -45,7 +48,11 @@ export async function apiPost<T>(
   return res.json();
 }
 
-/** POST con JSON — para endpoints que reciben application/json (ej. survey-assignment/assign) */
+/**
+ * POST with a JSON body.
+ * Used for endpoints that accept a Pydantic model directly in the request body
+ * (e.g. POST /answers/bulk).
+ */
 export async function apiPostJson<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",

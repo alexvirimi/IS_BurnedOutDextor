@@ -1,6 +1,3 @@
-// ─── lib/api/interfaces.tsx (reemplaza el archivo existente) ─────────────────
-// Añade SurveyWorkerAssignment y AssignmentTarget manteniendo todos los tipos previos.
-
 export interface Area {
   id: string;
   name: string;
@@ -40,7 +37,7 @@ export interface Question {
 }
 
 export interface QuestionSurveyRelation {
-  id: string;
+  id: string; // relation ID (used for DELETE)
   id_survey: string;
   id_question: string;
 }
@@ -63,24 +60,41 @@ export interface MySurveyResponse {
   already_responded: boolean;
 }
 
-/** Mirrors backend SurveyWorkerAssignmentResponse */
-export interface SurveyWorkerAssignment {
-  id: string;
-  id_survey: string;
-  id_worker: string;
-  created_at: string;
+/**
+ * Mirrors backend QuestionComplete — returned by GET /survey/{id}/complete.
+ * The `id` field here is the question_survey (join-table) id, which is what
+ * POST /answers/bulk expects as `id_question_survey`.
+ */
+export interface QuestionComplete {
+  id: string; // question_survey id  ← used as id_question_survey
+  question_text: string;
+  psicometric_variable: PsicometricVariable | string;
 }
 
-// ─── Discriminated union para el scope de asignación ─────────────────────────
-// Diseñado para ser extensible: añadir nuevos scopes (cargo, sede, equipo)
-// solo requiere agregar un nuevo case aquí y un filtro en assignmentService.
+export interface AnswerOption {
+  value: number;
+  label: string;
+}
 
-export type AssignmentTarget =
-  | { type: "empresa" }
-  | { type: "area"; areaId: string }
-  | { type: "grupo"; grupoId: string }
-  | { type: "trabajador"; trabajadorId: string }
-  // Casos futuros (no implementados aún, reservados para extensión):
-  | { type: "cargo"; cargoId: string }
-  | { type: "sede"; sedeId: string }
-  | { type: "equipo"; equipoId: string };
+/** Mirrors backend SurveyComplete from GET /survey/{id}/complete */
+export interface SurveyComplete {
+  id: string;
+  name: string;
+  aperture_date: string;
+  finishing_date: string;
+  status: string;
+  questions: QuestionComplete[];
+  answer_options: AnswerOption[];
+}
+
+/** Single item in the bulk-answer payload */
+export interface BulkAnswerItem {
+  id_question_survey: string;
+  value: number; // 1–5  (AnswerEnum)
+}
+
+/** Body for POST /answers/bulk */
+export interface BulkAnswerPayload {
+  id_survey: string;
+  answers: BulkAnswerItem[];
+}
