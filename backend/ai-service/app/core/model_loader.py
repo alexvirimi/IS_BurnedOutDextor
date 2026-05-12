@@ -36,7 +36,7 @@ class ModelLoader:
         # Convertimos el diccionario a DataFrame para el pipeline
         df = pd.DataFrame([data])
         
-        # Obtenemos predicción y probabilidades (tu lógica de predict_burnout.py)
+        # Obtenemos predicción y probabilidades (predict_burnout.py)
         proba = self.pipeline.predict_proba(df)[0]
         max_idx = proba.argmax()
         
