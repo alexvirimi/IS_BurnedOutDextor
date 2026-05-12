@@ -1,6 +1,6 @@
-// ─── API helpers ──────────────────────────────────────────────────────────────
-// credentials: "include" sends the HttpOnly cookie automatically.
-// No auth header needed — the backend reads identity from the JWT cookie.
+// ─── lib/api/context.tsx ─────────────────────────────────────────────────────
+// Añade apiPostJson para endpoints que esperan application/json (no FormData).
+// Mantiene todos los helpers existentes sin modificación.
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -25,6 +25,7 @@ export async function apiFetch<T>(path: string): Promise<T> {
   return res.json();
 }
 
+/** POST con FormData — para endpoints que usan Depends(Schema.as_form) */
 export async function apiPost<T>(
   path: string,
   body: Record<string, string>,
@@ -36,6 +37,24 @@ export async function apiPost<T>(
     body: formData,
     credentials: "include",
     headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? `Error ${res.status}`);
+  }
+  return res.json();
+}
+
+/** POST con JSON — para endpoints que reciben application/json (ej. survey-assignment/assign) */
+export async function apiPostJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(body),
+    credentials: "include",
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
