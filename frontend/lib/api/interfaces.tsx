@@ -59,3 +59,42 @@ export interface MySurveyResponse {
   questions_count: number;
   already_responded: boolean;
 }
+
+/**
+ * Mirrors backend QuestionComplete — returned by GET /survey/{id}/complete.
+ * The `id` field here is the question_survey (join-table) id, which is what
+ * POST /answers/bulk expects as `id_question_survey`.
+ */
+export interface QuestionComplete {
+  id: string; // question_survey id  ← used as id_question_survey
+  question_text: string;
+  psicometric_variable: PsicometricVariable | string;
+}
+
+export interface AnswerOption {
+  value: number;
+  label: string;
+}
+
+/** Mirrors backend SurveyComplete from GET /survey/{id}/complete */
+export interface SurveyComplete {
+  id: string;
+  name: string;
+  aperture_date: string;
+  finishing_date: string;
+  status: string;
+  questions: QuestionComplete[];
+  answer_options: AnswerOption[];
+}
+
+/** Single item in the bulk-answer payload */
+export interface BulkAnswerItem {
+  id_question_survey: string;
+  value: number; // 1–5  (AnswerEnum)
+}
+
+/** Body for POST /answers/bulk */
+export interface BulkAnswerPayload {
+  id_survey: string;
+  answers: BulkAnswerItem[];
+}

@@ -25,6 +25,10 @@ export async function apiFetch<T>(path: string): Promise<T> {
   return res.json();
 }
 
+/**
+ * POST with a multipart/form-data body (legacy — used for most endpoints
+ * that declare FastAPI `as_form` dependencies).
+ */
 export async function apiPost<T>(
   path: string,
   body: Record<string, string>,
@@ -36,6 +40,28 @@ export async function apiPost<T>(
     body: formData,
     credentials: "include",
     headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail ?? `Error ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * POST with a JSON body.
+ * Used for endpoints that accept a Pydantic model directly in the request body
+ * (e.g. POST /answers/bulk).
+ */
+export async function apiPostJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    body: JSON.stringify(body),
+    credentials: "include",
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
