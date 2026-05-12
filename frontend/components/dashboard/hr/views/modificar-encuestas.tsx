@@ -383,9 +383,6 @@ export function HRModificarEncuestas() {
           ENCUESTAS
         </h2>
         <div className="flex items-center gap-2">
-          <button className={`p-2 rounded-lg transition-colors`}>
-            <Filter size={20} />
-          </button>
           <div className="relative">
             <Search
               size={20}
@@ -448,9 +445,6 @@ export function HRModificarEncuestas() {
           ENCUESTAS INACTIVAS
         </h2>
         <div className="flex items-center gap-2">
-          <button className={`p-2 rounded-lg transition-colors`}>
-            <Filter size={20} />
-          </button>
           <div className="relative">
             <Search
               size={20}
