@@ -35,7 +35,6 @@ class TestWorkerSchemas:
             id_rank=uuid.uuid4()
         )
 
-        assert worker.flag is False
         assert worker.gender == "F"
 
     def test_worker_detail_response(self):
@@ -46,14 +45,12 @@ class TestWorkerSchemas:
             last_names="Perez",
             age=30,
             gender="M",
-            flag=True,
             id_group=uuid.uuid4(),
             id_rank=uuid.uuid4(),
             group="Backend",
             rank="Lider"
         )
 
-        assert worker.flag is True
         assert worker.group == "Backend"
         assert worker.rank == "Lider"
 
