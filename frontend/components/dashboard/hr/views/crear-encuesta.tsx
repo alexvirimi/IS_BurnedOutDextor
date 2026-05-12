@@ -69,6 +69,11 @@ export function HRCrearEncuesta() {
   const [apertureDate, setApertureDate] = useState("");
   const [finishingDate, setFinishingDate] = useState("");
 
+  // ── Survey fields errors ─────────────────────────────────────────────────────────
+  const [surveyNameError, setSurveyNameError] = useState(false);
+  const [apertureDateError, setApertureDateError] = useState(false);
+  const [finishingDateError, setFinishingDateError] = useState(false);
+
   // ── Survey selection + question picking ───────────────────────────────────
   const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
   const [showSurveyModal, setShowSurveyModal] = useState(false);
@@ -272,7 +277,22 @@ export function HRCrearEncuesta() {
   // ── Submit principal ──────────────────────────────────────────────────────
 
   const handleCrearEncuesta = async () => {
-    if (!surveyName.trim() || selectedQuestionIds.size === 0) return;
+    const hasSurveyNameError = !surveyName.trim();
+    const hasApertureDateError = !apertureDate;
+    const hasFinishingDateError = !finishingDate;
+
+    setSurveyNameError(hasSurveyNameError);
+    setApertureDateError(hasApertureDateError);
+    setFinishingDateError(hasFinishingDateError);
+
+    if (
+      hasSurveyNameError ||
+      hasApertureDateError ||
+      hasFinishingDateError ||
+      selectedQuestionIds.size === 0
+    )
+      return;
+
     if (!isFromScratch) {
       if (!confirmedSurvey) return;
     }
@@ -401,6 +421,12 @@ export function HRCrearEncuesta() {
           onChange={(e) => setSurveyName(e.target.value)}
           className="px-4 py-2.5 border border-foreground/30 rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm font-sans"
         />
+        {/* Error */}
+        {surveyNameError && (
+          <div className="mb-3 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs font-sans">
+            ERROR: Por favor, escribe un nombre para la encuesta.
+          </div>
+        )}
       </div>
 
       {/* ── Período ─────────────────────────────────────────────────── */}
@@ -435,6 +461,13 @@ export function HRCrearEncuesta() {
             />
           </div>
         </div>
+        {/* Error */}
+        {(apertureDateError || finishingDateError) && (
+          <div className="mb-3 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs font-sans">
+            ERROR: Por favor, eliga una fecha de apertura y una fecha de
+            finalización para el cuestionario.
+          </div>
+        )}
       </div>
 
       {/* ── Elegir preguntas ─────────────────────────────────────────── */}

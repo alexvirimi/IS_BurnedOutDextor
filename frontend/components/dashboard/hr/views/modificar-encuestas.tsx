@@ -611,7 +611,7 @@ export function HRModificarEncuestas() {
                         <Check size={13} /> Guardado
                       </>
                     ) : (
-                      "Guardar"
+                      "Activar Encuesta"
                     )}
                   </button>
                 </div>

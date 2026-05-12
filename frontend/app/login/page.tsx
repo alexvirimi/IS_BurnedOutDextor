@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { authApi } from "@/lib/auth/api";
 import { setApiToken } from "@/lib/api/context";
+import { EyeIcon, EyeClosedIcon } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,11 +13,26 @@ export default function LoginPage() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [usernameError, setUsernameError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const hasUsernameError = !username.trim();
+    const hasPasswordError = !password.trim();
+
+    setUsernameError(hasUsernameError);
+    setPasswordError(hasPasswordError);
+
+    if (hasUsernameError || hasPasswordError) return;
+
     setError(null);
     setLoading(true);
 
@@ -113,24 +129,32 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
-            <label
-              htmlFor="username"
-              className="block font-sans text-sm font-medium text-foreground mb-1"
-            >
-              Usuario
-            </label>
-            <input
-              id="username"
-              type="text"
-              placeholder="tu usuario"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              disabled={loading}
-              className="w-full px-4 py-3 bg-white border border-border rounded-lg font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
-            />
+            <div className="mb-3">
+              <label
+                htmlFor="username"
+                className="block font-sans text-sm font-medium text-foreground mb-1"
+              >
+                Usuario
+              </label>
+              <input
+                id="username"
+                type="text"
+                placeholder="tu usuario"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                disabled={loading}
+                className="w-full px-4 py-3 bg-white border border-border rounded-lg font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
+              />
+            </div>
+            {/* Error */}
+            {usernameError && (
+              <div className="mb-3 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs font-sans">
+                El nombre de usuario es obligatorio
+              </div>
+            )}
           </div>
 
           <div>
@@ -140,16 +164,36 @@ export default function LoginPage() {
             >
               Contraseña
             </label>
-            <input
-              id="password"
-              type="password"
-              placeholder="contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-              className="w-full px-4 py-3 bg-white border border-border rounded-lg font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
-            />
+            <div className="relative mb-3">
+              <input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+                className="w-full px-4 py-3 pr-12 bg-white border border-border rounded-lg font-sans text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+              >
+                {showPassword ? (
+                  <EyeIcon size={22} strokeWidth={2} />
+                ) : (
+                  <EyeClosedIcon size={22} strokeWidth={2} />
+                )}
+              </button>
+            </div>
+            {/* Error */}
+            {passwordError && (
+              <div className="mb-3 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs font-sans">
+                La contraseña es obligatoria
+              </div>
+            )}
           </div>
 
           <button
