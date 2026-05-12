@@ -18,9 +18,9 @@ COPY ./app ./app
 COPY ./models ./models
 
 # Exponer el puerto en el que correrá FastAPI
-EXPOSE 8000
+EXPOSE 8001
 
 # Comando para arrancar la aplicación
 # Usamos workers=1 porque los modelos de ML consumen mucha RAM; 
 # para escalar es mejor subir más réplicas del contenedor.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]

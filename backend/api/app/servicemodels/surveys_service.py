@@ -54,7 +54,7 @@ class SurveyService:
             questions.append({
                 "id": qs.id,
                 "question_text": qs.question.text,
-                "psicometric_variable": qs.question.psicometric_variable,
+                "psicometric_variable": qs.question.psicometric_variable.name,
             })
 
         answer_options = [
