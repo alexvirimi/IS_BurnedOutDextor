@@ -272,10 +272,9 @@ export function HRCrearEncuesta() {
   // ── Submit principal ──────────────────────────────────────────────────────
 
   const handleCrearEncuesta = async () => {
-    if (isFromScratch) {
-      if (!surveyName.trim() || selectedQuestionIds.size === 0) return;
-    } else {
-      if (!confirmedSurvey || selectedQuestionIds.size === 0) return;
+    if (!surveyName.trim() || selectedQuestionIds.size === 0) return;
+    if (!isFromScratch) {
+      if (!confirmedSurvey) return;
     }
 
     setSubmitPhase("creating");
@@ -285,36 +284,22 @@ export function HRCrearEncuesta() {
     try {
       let surveyId: string;
 
-      if (isFromScratch) {
-        // 1a. Crear encuesta nueva
-        const today = new Date().toISOString().split("T")[0];
-        const newSurvey = await apiPost<Survey>("/survey/", {
-          name: surveyName.trim(),
-          aperture_date: apertureDate || today,
-          finishing_date: finishingDate || today,
-          status: "activa",
-        });
-        surveyId = newSurvey.id;
+      // 1a. Crear encuesta nueva
+      const today = new Date().toISOString().split("T")[0];
+      const newSurvey = await apiPost<Survey>("/survey/", {
+        name: surveyName.trim(),
+        aperture_date: apertureDate || today,
+        finishing_date: finishingDate || today,
+        status: "activa",
+      });
+      surveyId = newSurvey.id;
 
-        // 1b. Vincular preguntas seleccionadas
-        for (const questionId of selectedQuestionIds) {
-          await apiPost("/question_survey/", {
-            id_survey: surveyId,
-            id_question: questionId,
-          });
-        }
-      } else {
-        // Encuesta existente: solo vincular preguntas nuevas
-        surveyId = confirmedSurvey!.id;
-        const toLink = [...selectedQuestionIds].filter(
-          (id) => !linkedQuestionIds.has(id),
-        );
-        for (const questionId of toLink) {
-          await apiPost("/question_survey/", {
-            id_survey: surveyId,
-            id_question: questionId,
-          });
-        }
+      // 1b. Vincular preguntas seleccionadas
+      for (const questionId of selectedQuestionIds) {
+        await apiPost("/question_survey/", {
+          id_survey: surveyId,
+          id_question: questionId,
+        });
       }
 
       // 2. Asignar encuesta a los trabajadores según el scope seleccionado
