@@ -4,6 +4,7 @@ Mantiene sincronización con schemas del AI-service.
 """
 
 from pydantic import BaseModel, Field
+from typing import List
 from uuid import UUID
 
 
@@ -31,7 +32,7 @@ class WorkerBurnoutFeaturesResponse(BaseModel):
     gender_enc: int = Field(..., ge=0, le=1, description="Género codificado (0=F, 1=M)")
     
     # Modalidad y sede
-    worker_type_enc: int = Field(..., ge=0, le=1, description="Tipo trabajo (0=Presencial, 1=Remoto)")
+    worker_type_enc: int = Field(..., ge=0, le=1, description="Tipo trabajo (0=Hibrida, 1=Remoto)")
     location_enc: int = Field(..., ge=1, description="Índice de ubicación/sede")
     
     # Métricas psicométricas
@@ -54,5 +55,7 @@ class BurnoutPredictionResponse(BaseModel):
     """
     worker_id: UUID
     burnout_class: str = Field(..., description="Clasificación: Muy Bajo, Bajo, Medio, Moderado, Alto")
-    burnout_score: float = Field(..., ge=0.0, le=1.0, description="Probabilidad de la clase predicha")
+    burnout_confidence: float = Field(..., ge=0.0, le=1.0, description="Probabilidad de la clase predicha")
     probabilities: dict[str, float] = Field(..., description="Distribución de probabilidades por clase")
+    reasons: List[str]
+    suggestion: str = Field(..., description="Sugerencias de intervenciones que puede realizar la compañía con los empleados de acuerdo a su nivel de burnout")

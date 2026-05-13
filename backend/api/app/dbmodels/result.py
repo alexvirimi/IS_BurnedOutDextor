@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from datetime import date
 
@@ -11,7 +11,9 @@ from sqlalchemy import (
     Date,
     UUID,
     Boolean,
-    Numeric
+    Numeric,
+    Text,
+    String
 )
 
 from sqlalchemy.orm import (
@@ -39,13 +41,42 @@ class Result(Base):
         primary_key=True
     )
 
-    burnout_score: Mapped[float] = mapped_column(
+    # Datos Métricos de la IA
+    burnout_confidence: Mapped[float] = mapped_column(
         Numeric(10, 4)
+    )
+
+    burnout_class: Mapped[str] = mapped_column(
+        String(50)      
     )
 
     flag: Mapped[bool] = mapped_column(
         Boolean,
         default=False
+    )
+
+    # Almacena las razones enviadas por la IA (Causas técnicas)
+    burnout_reasons: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True
+    )
+
+    # La acción sugerida por el motor de reglas del Backend (Acción sugerida por la empresa)
+    suggested_intervention: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True
+    )
+
+    # Estado del flujo de RRHH: 'Pendiente', 'Aprobada', 'Rechazada', 'Ejecutada'
+    intervention_status: Mapped[str] = mapped_column(
+        String(50),
+        default='Pendiente'
+    )
+
+    # Espacio para que RRHH deje comentarios al aprobar/rechazar
+    hr_comment: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True
     )
 
     id_worker: Mapped[uuid.UUID] = mapped_column(

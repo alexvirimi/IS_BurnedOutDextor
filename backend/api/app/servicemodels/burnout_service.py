@@ -20,6 +20,7 @@ from fastapi.encoders import jsonable_encoder
 from app.schemas.burnout_integration_scheme import (
     BurnoutPredictionResponse
 )
+from app.servicemodels.intervention_service import InterventionService
 
 # Configuración AI Service
 AI_URL = os.getenv(
@@ -54,6 +55,103 @@ class BurnoutService:
             )
 
         return dict(result)
+
+    @staticmethod
+    def _save_result(
+        db: Session,
+        worker_id: UUID,
+        survey_id: UUID,
+        data: dict,
+        suggestion: str,
+    ) -> str:
+        """
+        Guarda la predicción completa en la tabla result.
+        Incluye: clase, confianza, razones y sugerencia de intervención.
+        Permite múltiples resultados si tienen fechas diferentes.
+        """
+        # Verificar si ya existe resultado para hoy con este worker y survey
+        check_query = text("""
+            SELECT id, generation_date FROM result
+            WHERE id_worker = :worker_id 
+            AND id_survey = :survey_id 
+            AND generation_date = CURRENT_DATE
+        """)
+        
+        existing = db.execute(check_query, {
+            "worker_id": str(worker_id),
+            "survey_id": str(survey_id),
+        }).mappings().first()
+        
+        if existing:
+            # Actualizar resultado existente de hoy
+            update_query = text("""
+                UPDATE result
+                SET burnout_confidence = :burnout_confidence,
+                    burnout_class = :burnout_class,
+                    burnout_reasons = :burnout_reasons,
+                    suggested_intervention = :suggested_intervention
+                WHERE id_worker = :worker_id 
+                AND id_survey = :survey_id 
+                AND generation_date = CURRENT_DATE
+                RETURNING id, generation_date
+            """)
+            
+            result = db.execute(update_query, {
+                "burnout_confidence": data["burnout_confidence"],
+                "burnout_class": data["burnout_class"],
+                "burnout_reasons": "\n".join(data.get("reasons", [])),
+                "suggested_intervention": suggestion,
+                "worker_id": str(worker_id),
+                "survey_id": str(survey_id),
+            }).mappings().first()
+        else:
+            # Insertar nuevo resultado
+            query = text("""
+                INSERT INTO result (
+                    id,
+                    burnout_confidence,
+                    burnout_class,
+                    burnout_reasons,
+                    suggested_intervention,
+                    intervention_status,
+                    id_worker,
+                    id_group,
+                    id_area,
+                    id_survey,
+                    generation_date,
+                    flag
+                )
+                SELECT
+                    gen_random_uuid(),
+                    :burnout_confidence,         
+                    :burnout_class,
+                    :burnout_reasons,
+                    :suggested_intervention,
+                    'Pendiente',
+                    :worker_id,
+                    w.id_group,
+                    g.id_area,
+                    :survey_id,
+                    CURRENT_DATE,
+                    false
+                FROM worker w
+                JOIN "group" g ON g.id = w.id_group
+                WHERE w.id = :worker_id
+                RETURNING id, generation_date
+            """)
+
+            result = db.execute(query, {
+                "burnout_confidence": data["burnout_confidence"],
+                "burnout_class": data["burnout_class"],
+                "burnout_reasons": "\n".join(data.get("reasons", [])),
+                "suggested_intervention": suggestion,
+                "worker_id": str(worker_id),
+                "survey_id": str(survey_id),
+            }).mappings().first()
+
+        db.commit()
+
+        return str(result["id"]), result["generation_date"]
 
     @staticmethod
     async def predict_worker_burnout(
@@ -102,7 +200,7 @@ class BurnoutService:
         features = jsonable_encoder(features)
 
         try:
-
+            # Llamar al ai-service
             async with httpx.AsyncClient() as client:
 
                 response = await client.post(
@@ -116,9 +214,28 @@ class BurnoutService:
 
                 response.raise_for_status()
 
-                data = response.json()
+                ai_data = response.json()
 
-                return BurnoutPredictionResponse(**data)
+                suggestion = InterventionService.generate_suggestion(
+                    burnout_class=ai_data['burnout_class'],
+                    reasons=ai_data['reasons'],
+                    features=features
+                )
+
+                # Guardar resultado en BD
+                result_id, generation_date = BurnoutService._save_result(
+                    db, worker_id, survey_id, ai_data, suggestion
+                )
+
+                # Retornar respuesta completa
+                return BurnoutPredictionResponse(
+                    worker_id=ai_data["worker_id"],
+                    burnout_class=ai_data["burnout_class"],
+                    burnout_confidence=ai_data["burnout_confidence"],
+                    probabilities=ai_data["probabilities"],
+                    reasons=ai_data["reasons"],
+                    suggestion=suggestion,
+                )
 
         except httpx.ConnectError:
 

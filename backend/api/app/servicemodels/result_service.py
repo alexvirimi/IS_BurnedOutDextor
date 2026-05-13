@@ -94,15 +94,52 @@ class ResultService:
             Result.id_survey == data["id_survey"]
         ).first()
 
+        # =========================================================
+        # UPDATE EXISTING RESULT
+        # =========================================================
+
         if existing:
 
-            existing.burnout_score = data["burnout_score"]
+            existing.burnout_confidence = data["burnout_confidence"]
 
             existing.id_group = data["id_group"]
 
             existing.id_area = data["id_area"]
 
-            existing.flag = data.get("flag", existing.flag)
+            existing.flag = data.get(
+                "flag",
+                existing.flag
+            )
+
+            existing.burnout_class = data.get(
+                "burnout_class",
+                existing.burnout_class
+            )
+
+            existing.burnout_reasons = data.get(
+                "burnout_reasons",
+                existing.burnout_reasons
+            )
+
+            existing.suggested_intervention = data.get(
+                "suggested_intervention",
+                existing.suggested_intervention
+            )
+
+            existing.intervention_status = data.get(
+                "intervention_status",
+                existing.intervention_status
+            )
+
+            existing.hr_comment = data.get(
+                "hr_comment",
+                existing.hr_comment
+            )
+
+            existing.generation_date = data.get(
+                "generation_date",
+                existing.generation_date
+            )
 
             self.db.commit()
 
@@ -110,7 +147,30 @@ class ResultService:
 
             return existing
 
-        return self.repo.create(data)
+        # =========================================================
+        # CREATE NEW RESULT
+        # =========================================================
+
+        result_data = {
+            "id": data.get("id"),
+            "burnout_confidence": data["burnout_confidence"],
+            "id_worker": data["id_worker"],
+            "id_group": data["id_group"],
+            "id_area": data["id_area"],
+            "id_survey": data["id_survey"],
+            "generation_date": data["generation_date"],
+            "flag": data.get("flag", False),
+            "burnout_class": data.get("burnout_class"),
+            "burnout_reasons": data.get("burnout_reasons"),
+            "suggested_intervention": data.get("suggested_intervention"),
+            "intervention_status": data.get(
+                "intervention_status",
+                "Pendiente"
+            ),
+            "hr_comment": data.get("hr_comment")
+        }
+
+        return self.repo.create(result_data)
 
     def update_result_flag(
         self,
