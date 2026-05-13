@@ -37,7 +37,7 @@ class WorkerBurnoutFeaturesResponse(BaseModel):
     
     # Métricas psicométricas
     avg_agotamiento: float = Field(..., ge=1.0, le=5.0, description="Promedio agotamiento (1-5)")
-    avg_despersonalizacion: float = Field(..., ge=1.0, le=5.0, description="Promedio despersonalización (1-5)")
+    avg_despersonalizacion: float = Field(..., ge=1.0, le=5.0, description="Promedio despersonalizacion (1-5)")
     eficacia_invertida: float = Field(..., ge=1.0, le=5.0, description="Eficacia invertida (6-promedio)")
 
 

@@ -27,7 +27,7 @@ class InterventionService:
         if "agotamiento emocional elevado" in reasons_text:
             suggestions.append("Bienestar: Revisión de límites de jornada laboral y desconexión digital.")
         
-        if "despersonalización" in reasons_text:
+        if "despersonalizacion" in reasons_text:
             suggestions.append("Psicología: Sesión de acompañamiento para trabajar el propósito y la conexión emocional con el rol actual.")
 
         if "eficacia" in reasons_text or "logros profesionales" in reasons_text:

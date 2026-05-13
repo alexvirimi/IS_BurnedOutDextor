@@ -12,7 +12,7 @@ from enum import Enum
 import httpx
 import json
 
-from sqlalchemy import text
+from sqlalchemy import text, func
 from sqlalchemy.orm import Session
 
 from fastapi import HTTPException
@@ -33,8 +33,74 @@ if _ai_env.rstrip("/").endswith("/predict"):
 else:
     AI_URL = _ai_env.rstrip("/") + "/predict"
 
+# UUIDs canónicos de variables psicométricas (deben coincidir con los de la BD)
+_PSICO_DESPERSONALIZACION = "7bfe6646-c400-4913-93ec-bcff12c67987"
+_PSICO_EFICACIA           = "9b76e819-3e37-4d52-ad7d-00bbecdab3d0"
+_PSICO_AGOTAMIENTO        = "c8dfdbb2-6761-4bb7-ab29-7b2c615e11a5"
+
 
 class BurnoutService:
+
+    @staticmethod
+    def _compute_psicometric_avgs(
+        db: Session,
+        worker_id: UUID,
+        survey_id: UUID,
+    ) -> dict:
+        """
+        Calcula directamente desde la BD los promedios psicométricos
+        (agotamiento, despersonalización, eficacia) filtrando por
+        worker_id Y survey_id, de modo que siempre reflejan la encuesta
+        activa y no mezclan respuestas de otras encuestas.
+
+        Retorna un dict con las tres claves::
+            {
+                'avg_agotamiento':       float,  # 1-5
+                'avg_despersonalizacion': float, # 1-5
+                'eficacia_invertida':    float,  # 1-5
+            }
+        Si no hay respuestas para alguna variable se usa 1.0 como mínimo.
+        """
+        query = text("""
+            SELECT
+                pv.id::text                      AS psico_id,
+                AVG(a.value::numeric)            AS avg_value
+            FROM answer a
+            JOIN question_survey  qs ON qs.id = a.id_question_survey
+            JOIN question          q  ON q.id  = qs.id_question
+            JOIN psicometric_variable pv ON pv.id = q.psicometric_variable_id
+            WHERE a.id_worker = :worker_id
+              AND qs.id_survey = :survey_id
+              AND pv.id IN (
+                    :id_desp,
+                    :id_efic,
+                    :id_agot
+              )
+            GROUP BY pv.id
+        """)
+
+        rows = db.execute(query, {
+            "worker_id": str(worker_id),
+            "survey_id": str(survey_id),
+            "id_desp":   _PSICO_DESPERSONALIZACION,
+            "id_efic":   _PSICO_EFICACIA,
+            "id_agot":   _PSICO_AGOTAMIENTO,
+        }).mappings().all()
+
+        # Indexar por psico_id para acceso rápido
+        avgs_by_id = {row["psico_id"]: float(row["avg_value"]) for row in rows}
+
+        avg_agotamiento        = max(avgs_by_id.get(_PSICO_AGOTAMIENTO,        1.0), 1.0)
+        avg_despersonalizacion = max(avgs_by_id.get(_PSICO_DESPERSONALIZACION, 1.0), 1.0)
+        avg_eficacia_raw       = max(avgs_by_id.get(_PSICO_EFICACIA,           1.0), 1.0)
+        # Eficacia invertida: 6 - promedio (1-5 → 5-1), clamped a [1, 5]
+        eficacia_invertida     = max(min(6.0 - avg_eficacia_raw, 5.0), 1.0)
+
+        return {
+            "avg_agotamiento":        round(avg_agotamiento,        4),
+            "avg_despersonalizacion": round(avg_despersonalizacion, 4),
+            "eficacia_invertida":     round(eficacia_invertida,     4),
+        }
 
     @staticmethod
     def get_worker_features(
@@ -197,20 +263,37 @@ class BurnoutService:
             worker_id
         )
 
-        # Manejar valores NULL: reemplazar por defaults razonables
+        # ── Recalcular promedios psicométricos directamente desde la BD ─────────
+        # La vista vw_worker_burnout_features puede tener valores obsoletos o NULL
+        # si mezcla respuestas de otras encuestas. Aquí sobreescribimos siempre
+        # con el cálculo preciso filtrado por worker_id + survey_id.
+        psico_avgs = BurnoutService._compute_psicometric_avgs(db, worker_id, survey_id)
+        features["avg_agotamiento"]        = psico_avgs["avg_agotamiento"]
+        features["avg_despersonalizacion"] = psico_avgs["avg_despersonalizacion"]
+        features["eficacia_invertida"]     = psico_avgs["eficacia_invertida"]
+        print(
+            f"Promedios psicométricos recalculados: "
+            f"agotamiento={psico_avgs['avg_agotamiento']}, "
+            f"despersonalizacion={psico_avgs['avg_despersonalizacion']}, "
+            f"eficacia_invertida={psico_avgs['eficacia_invertida']}"
+        )
+
+        # Manejar valores NULL restantes: reemplazar por defaults razonables
         null_keys = [k for k, v in features.items() if v is None]
         if null_keys:
             print(f"Warning: campos NULL encontrados: {null_keys} — se aplicarán valores por defecto")
 
+        # Campos psicométricos ya tienen valor calculado; solo los demás numéricos
         numeric_defaults = {
             "assigned_tasks", "completed_tasks", "absences", "employee_calls",
             "completion_rate", "seniority_years", "age",
-            "avg_agotamiento", "avg_despersonalizacion", "eficacia_invertida"
         }
 
         for key in null_keys:
-            # Campos numéricos y codificados terminados en _enc se reemplazan por 0
-            if key in numeric_defaults or key.endswith("_enc"):
+            if key in {"avg_agotamiento", "avg_despersonalizacion", "eficacia_invertida"}:
+                # Ya fueron calculados arriba; si aún son None algo falló — usar mínimo válido
+                features[key] = 1.0
+            elif key in numeric_defaults or key.endswith("_enc"):
                 features[key] = 0
             else:
                 # Fallback para cadenas u otros tipos

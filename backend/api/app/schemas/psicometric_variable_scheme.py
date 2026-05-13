@@ -3,13 +3,13 @@ from uuid import UUID
 from typing import Optional
 
 class PsicometricVariableBase(BaseModel):
-    name: str = Field(..., description="Nombre de la variable psicométrica (agotamiento, despersonalización, eficacia)")
+    name: str = Field(..., description="Nombre de la variable psicométrica (agotamiento, despersonalizacion, eficacia)")
 
 class PsicometricVariableCreate(PsicometricVariableBase):
     pass
 
 class PsicometricVariableUpdate(PsicometricVariableBase):
-    name: Optional[str] = Field(None, description="Nombre de la variable psicométrica (agotamiento, despersonalización, eficacia)")
+    name: Optional[str] = Field(None, description="Nombre de la variable psicométrica (agotamiento, despersonalizacion, eficacia)")
 
 class PsicometricVariableResponse(PsicometricVariableBase):
     id: UUID
