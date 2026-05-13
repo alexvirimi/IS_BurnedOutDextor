@@ -25,8 +25,6 @@ from app.servicemodels.intervention_service import InterventionService
 from app.dbmodels import Result
 
 # Configuración AI Service
-# Permitir que la variable de entorno sea la URL completa o sólo la base.
-# Si la base no incluye "/predict" se añade automáticamente.
 _ai_env = os.getenv("AI_SERVICE_URL", "http://localhost:8001/predict")
 if _ai_env.rstrip("/").endswith("/predict"):
     AI_URL = _ai_env
@@ -135,13 +133,6 @@ class BurnoutService:
         data: dict,
         suggestion: str,
     ) -> str:
-        """
-        Guarda la predicción completa en la tabla result.
-        Incluye: clase, confianza, razones y sugerencia de intervención.
-        Permite múltiples resultados si tienen fechas diferentes.
-        """
-        # Verificar si ya existe resultado para este worker y survey
-        # (idempotency a nivel de aplicación: si existe, lo actualizamos)
         check_query = text("""
             SELECT id, generation_date FROM result
             WHERE id_worker = :worker_id 
@@ -154,7 +145,6 @@ class BurnoutService:
         }).mappings().first()
         
         if existing:
-            # Actualizar resultado existente
             update_query = text("""
                 UPDATE result
                 SET burnout_confidence = :burnout_confidence,
@@ -175,7 +165,6 @@ class BurnoutService:
                 "survey_id": str(survey_id),
             }).mappings().first()
         else:
-            # Insertar nuevo resultado
             query = text("""
                 INSERT INTO result (
                     id,
@@ -230,7 +219,7 @@ class BurnoutService:
         survey_id: UUID
     ) -> BurnoutPredictionResponse:
 
-        # IDempotency: si ya existe un resultado para este worker+survey, retornar ese resultado
+        # Idempotency: si ya existe un resultado, retornarlo
         try:
             existing = (
                 db.query(Result)
@@ -240,7 +229,6 @@ class BurnoutService:
             )
 
             if existing:
-                # Reconstruir la respuesta mínima a partir del registro en BD
                 reasons = []
                 if existing.burnout_reasons:
                     reasons = existing.burnout_reasons.split("\n")
@@ -254,7 +242,6 @@ class BurnoutService:
                     suggestion=existing.suggested_intervention or "",
                 )
         except Exception:
-            # En caso de error al leer el resultado existente, continuar con la predicción
             pass
 
         # Obtener features
@@ -296,34 +283,24 @@ class BurnoutService:
             elif key in numeric_defaults or key.endswith("_enc"):
                 features[key] = 0
             else:
-                # Fallback para cadenas u otros tipos
                 features[key] = ""
 
         # Convertir tipos no serializables
         for key, value in features.items():
-
             if isinstance(value, UUID):
                 features[key] = str(value)
-
             elif isinstance(value, Decimal):
                 features[key] = float(value)
-
             elif isinstance(value, datetime):
                 features[key] = value.isoformat()
-
             elif isinstance(value, date):
                 features[key] = value.isoformat()
-
             elif isinstance(value, Enum):
                 features[key] = value.value
 
-        # Agregar survey_id
         features["survey_id"] = str(survey_id)
-
-        # Convertir TODO a JSON serializable
         features = jsonable_encoder(features)
 
-        # Validar que el payload contiene los campos que el AI service espera
         required_fields = [
             "worker_id",
             "survey_id",
@@ -349,19 +326,16 @@ class BurnoutService:
                 detail=f"Payload incompleto para AI Service, faltan campos: {missing}"
             )
 
-        # Imprimir payload (útil para debugging en logs)
         print("AI payload keys:", list(features.keys()))
 
         try:
-            # Debug: mostrar la URL del AI service y el payload enviado
             print("AI_URL:", AI_URL)
             try:
                 print("AI payload:", json.dumps(features, ensure_ascii=False))
             except Exception:
                 print("AI payload: <no se pudo serializar a JSON>")
-            # Llamar al ai-service
-            async with httpx.AsyncClient() as client:
 
+            async with httpx.AsyncClient() as client:
                 response = await client.post(
                     AI_URL,
                     json=features,
@@ -382,12 +356,10 @@ class BurnoutService:
                     features=features
                 )
 
-                # Guardar resultado en BD
                 result_id, generation_date = BurnoutService._save_result(
                     db, worker_id, survey_id, ai_data, suggestion
                 )
 
-                # Retornar respuesta completa
                 return BurnoutPredictionResponse(
                     worker_id=ai_data["worker_id"],
                     burnout_class=ai_data["burnout_class"],
@@ -398,21 +370,18 @@ class BurnoutService:
                 )
 
         except httpx.ConnectError:
-
             raise HTTPException(
                 status_code=503,
                 detail="AI Service no disponible"
             )
 
         except httpx.HTTPStatusError as exc:
-
             raise HTTPException(
                 status_code=502,
                 detail=exc.response.text
             )
 
         except Exception as e:
-
             raise HTTPException(
                 status_code=500,
                 detail=str(e)
