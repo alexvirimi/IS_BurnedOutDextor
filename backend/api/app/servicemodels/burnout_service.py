@@ -25,13 +25,32 @@ from app.servicemodels.intervention_service import InterventionService
 from app.dbmodels import Result
 
 # Configuración AI Service
-# Permitir que la variable de entorno sea la URL completa o sólo la base.
-# Si la base no incluye "/predict" se añade automáticamente.
 _ai_env = os.getenv("AI_SERVICE_URL", "http://localhost:8001/predict")
 if _ai_env.rstrip("/").endswith("/predict"):
     AI_URL = _ai_env
 else:
     AI_URL = _ai_env.rstrip("/") + "/predict"
+
+# ─── Fix B: defaults separados por rango válido ───────────────────────────────
+# Los campos psicométricos tienen rango [1.0, 5.0] — nunca pueden ser 0.
+# eficacia_invertida = 6 - avg_eficacia, así que si eficacia = 1 (mínima),
+# eficacia_invertida = 5 (máximo riesgo) es el default conservador.
+_PSICOMETRIC_NULL_DEFAULTS: dict[str, float] = {
+    "avg_agotamiento":        1.0,
+    "avg_despersonalizacion": 1.0,
+    "eficacia_invertida":     5.0,
+}
+
+# Campos numéricos cuyo valor válido cuando son NULL es 0
+_NUMERIC_ZERO_FIELDS: set[str] = {
+    "assigned_tasks",
+    "completed_tasks",
+    "absences",
+    "employee_calls",
+    "completion_rate",
+    "seniority_years",
+    "age",
+}
 
 
 class BurnoutService:
@@ -69,13 +88,6 @@ class BurnoutService:
         data: dict,
         suggestion: str,
     ) -> str:
-        """
-        Guarda la predicción completa en la tabla result.
-        Incluye: clase, confianza, razones y sugerencia de intervención.
-        Permite múltiples resultados si tienen fechas diferentes.
-        """
-        # Verificar si ya existe resultado para este worker y survey
-        # (idempotency a nivel de aplicación: si existe, lo actualizamos)
         check_query = text("""
             SELECT id, generation_date FROM result
             WHERE id_worker = :worker_id 
@@ -88,7 +100,6 @@ class BurnoutService:
         }).mappings().first()
         
         if existing:
-            # Actualizar resultado existente
             update_query = text("""
                 UPDATE result
                 SET burnout_confidence = :burnout_confidence,
@@ -109,7 +120,6 @@ class BurnoutService:
                 "survey_id": str(survey_id),
             }).mappings().first()
         else:
-            # Insertar nuevo resultado
             query = text("""
                 INSERT INTO result (
                     id,
@@ -164,7 +174,7 @@ class BurnoutService:
         survey_id: UUID
     ) -> BurnoutPredictionResponse:
 
-        # IDempotency: si ya existe un resultado para este worker+survey, retornar ese resultado
+        # Idempotency: si ya existe un resultado, retornarlo
         try:
             existing = (
                 db.query(Result)
@@ -174,7 +184,6 @@ class BurnoutService:
             )
 
             if existing:
-                # Reconstruir la respuesta mínima a partir del registro en BD
                 reasons = []
                 if existing.burnout_reasons:
                     reasons = existing.burnout_reasons.split("\n")
@@ -188,59 +197,62 @@ class BurnoutService:
                     suggestion=existing.suggested_intervention or "",
                 )
         except Exception:
-            # En caso de error al leer el resultado existente, continuar con la predicción
             pass
 
         # Obtener features
-        features = BurnoutService.get_worker_features(
-            db,
-            worker_id
-        )
+        features = BurnoutService.get_worker_features(db, worker_id)
 
-        # Manejar valores NULL: reemplazar por defaults razonables
+        # ── Fix C: guard clause para datos psicométricos faltantes ────────────
+        # Si alguno de los tres promedios MBI es NULL, el worker no respondió
+        # todas las variables psicométricas. Predecir con 0 daría resultados
+        # inválidos y además viola la restricción ge=1.0 del schema del AI service.
+        psicometric_fields = [
+            "avg_agotamiento",
+            "avg_despersonalizacion",
+            "eficacia_invertida",
+        ]
+        missing_psico = [f for f in psicometric_fields if features.get(f) is None]
+
+        if missing_psico:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Datos psicométricos incompletos: faltan respuestas para "
+                    f"{missing_psico}. El trabajador debe completar todas las "
+                    f"preguntas de la encuesta antes de generar la predicción."
+                ),
+            )
+
+        # Manejar valores NULL con defaults correctos por tipo de campo
         null_keys = [k for k, v in features.items() if v is None]
         if null_keys:
-            print(f"Warning: campos NULL encontrados: {null_keys} — se aplicarán valores por defecto")
-
-        numeric_defaults = {
-            "assigned_tasks", "completed_tasks", "absences", "employee_calls",
-            "completion_rate", "seniority_years", "age",
-            "avg_agotamiento", "avg_despersonalizacion", "eficacia_invertida"
-        }
+            print(f"Warning: campos NULL encontrados: {null_keys} — aplicando defaults")
 
         for key in null_keys:
-            # Campos numéricos y codificados terminados en _enc se reemplazan por 0
-            if key in numeric_defaults or key.endswith("_enc"):
+            if key in _PSICOMETRIC_NULL_DEFAULTS:
+                # ── Fix B: usar 1.0 / 5.0 según el campo, nunca 0 ────────────
+                features[key] = _PSICOMETRIC_NULL_DEFAULTS[key]
+            elif key in _NUMERIC_ZERO_FIELDS or key.endswith("_enc"):
                 features[key] = 0
             else:
-                # Fallback para cadenas u otros tipos
                 features[key] = ""
 
         # Convertir tipos no serializables
         for key, value in features.items():
-
             if isinstance(value, UUID):
                 features[key] = str(value)
-
             elif isinstance(value, Decimal):
                 features[key] = float(value)
-
             elif isinstance(value, datetime):
                 features[key] = value.isoformat()
-
             elif isinstance(value, date):
                 features[key] = value.isoformat()
-
             elif isinstance(value, Enum):
                 features[key] = value.value
 
-        # Agregar survey_id
         features["survey_id"] = str(survey_id)
-
-        # Convertir TODO a JSON serializable
         features = jsonable_encoder(features)
 
-        # Validar que el payload contiene los campos que el AI service espera
         required_fields = [
             "worker_id",
             "survey_id",
@@ -266,19 +278,16 @@ class BurnoutService:
                 detail=f"Payload incompleto para AI Service, faltan campos: {missing}"
             )
 
-        # Imprimir payload (útil para debugging en logs)
         print("AI payload keys:", list(features.keys()))
 
         try:
-            # Debug: mostrar la URL del AI service y el payload enviado
             print("AI_URL:", AI_URL)
             try:
                 print("AI payload:", json.dumps(features, ensure_ascii=False))
             except Exception:
                 print("AI payload: <no se pudo serializar a JSON>")
-            # Llamar al ai-service
-            async with httpx.AsyncClient() as client:
 
+            async with httpx.AsyncClient() as client:
                 response = await client.post(
                     AI_URL,
                     json=features,
@@ -299,12 +308,10 @@ class BurnoutService:
                     features=features
                 )
 
-                # Guardar resultado en BD
                 result_id, generation_date = BurnoutService._save_result(
                     db, worker_id, survey_id, ai_data, suggestion
                 )
 
-                # Retornar respuesta completa
                 return BurnoutPredictionResponse(
                     worker_id=ai_data["worker_id"],
                     burnout_class=ai_data["burnout_class"],
@@ -315,21 +322,18 @@ class BurnoutService:
                 )
 
         except httpx.ConnectError:
-
             raise HTTPException(
                 status_code=503,
                 detail="AI Service no disponible"
             )
 
         except httpx.HTTPStatusError as exc:
-
             raise HTTPException(
                 status_code=502,
                 detail=exc.response.text
             )
 
         except Exception as e:
-
             raise HTTPException(
                 status_code=500,
                 detail=str(e)
