@@ -582,7 +582,7 @@ export function HRCrearEncuesta() {
         DIRIGIDA A
       </h2>
 
-      <div className="space-y-3 max-w-2xl">
+      <div className="space-y-3">
         {/* Toda la empresa */}
         <button
           onClick={handleSelectEmpresa}

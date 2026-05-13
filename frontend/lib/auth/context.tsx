@@ -19,7 +19,8 @@ interface SessionData {
   worker_id: string;
   rank_level: 1 | 2 | 3;
   rank_name: string;
-  token?: string; // raw JWT, kept in memory only
+  id_group: string; // ← added
+  token?: string;
 }
 
 interface AuthContextValue {
