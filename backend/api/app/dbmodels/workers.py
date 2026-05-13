@@ -46,9 +46,14 @@ class Worker(Base):
     name: Mapped[str] = mapped_column(String(100))
     last_names: Mapped[str] = mapped_column(String(150))
     age: Mapped[int] = mapped_column(Integer)
-    gender: Mapped[str] = mapped_column(
-        Enum(GenderEnum, native_enum=False),
-        nullable=False
+    gender: Mapped[GenderEnum] = mapped_column(
+        Enum(
+            GenderEnum,
+            native_enum=False,
+            values_callable=lambda enum_cls: [e.value for e in enum_cls],
+            validate_strings=True,
+        ),
+        nullable=False,
     )
 
     id_group: Mapped[uuid.UUID] = mapped_column(

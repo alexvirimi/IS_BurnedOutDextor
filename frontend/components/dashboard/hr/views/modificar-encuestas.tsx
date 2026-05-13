@@ -44,7 +44,7 @@ export function HRModificarEncuestas() {
 
   // ── Survey detail modal ───────────────────────────────────────────────────────
   const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null);
-  const [modalMode, setModalMode] = useState<"active" | "finalizada">("active");
+  const [modalMode, setModalMode] = useState<"active" | "cerrada">("active");
   const [linkedQuestions, setLinkedQuestions] = useState<Question[]>([]);
   const [linkedRelations, setLinkedRelations] = useState<
     QuestionSurveyRelation[]
@@ -104,13 +104,13 @@ export function HRModificarEncuestas() {
 
   const activeSurveys = surveys.filter(
     (s) =>
-      s.status.toLowerCase() !== "finalizada" &&
+      s.status.toLowerCase() !== "cerrada" &&
       s.name.toLowerCase().includes(searchActive.toLowerCase()),
   );
 
   const inactiveSurveys = surveys.filter(
     (s) =>
-      s.status.toLowerCase() === "finalizada" &&
+      s.status.toLowerCase() === "cerrada" &&
       s.name.toLowerCase().includes(searchInactive.toLowerCase()),
   );
 
@@ -126,7 +126,7 @@ export function HRModificarEncuestas() {
 
   const handleOpenSurvey = async (
     survey: Survey,
-    mode: "active" | "finalizada" = "active",
+    mode: "active" | "cerrada" = "active",
   ) => {
     setSelectedSurvey(survey);
     setModalMode(mode);
@@ -336,11 +336,11 @@ export function HRModificarEncuestas() {
     setDeleteError(null);
     try {
       await apiPatch(`/survey/${surveyToDelete.id}`, {
-        status: "finalizada",
+        status: "cerrada",
       });
       setSurveys((prev) =>
         prev.map((s) =>
-          s.id === surveyToDelete.id ? { ...s, status: "finalizada" } : s,
+          s.id === surveyToDelete.id ? { ...s, status: "cerrada" } : s,
         ),
       );
       setShowDeleteModal(false);
@@ -479,7 +479,7 @@ export function HRModificarEncuestas() {
         {inactiveSurveys.map((survey) => (
           <button
             key={survey.id}
-            onClick={() => handleOpenSurvey(survey, "finalizada")}
+            onClick={() => handleOpenSurvey(survey, "cerrada")}
             className="w-full text-left px-4 py-3 text-white rounded-lg bg-accent text-foreground hover:opacity-90 transition-opacity"
           >
             <span>{survey.name}</span>
@@ -662,7 +662,7 @@ export function HRModificarEncuestas() {
                       onClick={() => handleRemoveQuestion(question)}
                       disabled={savingQuestion === question.id}
                       className={`ml-3 flex-shrink-0 w-7 h-7 rounded-full border-2 border-red-300 flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40 ${
-                        modalMode === "finalizada" ? "invisible" : ""
+                        modalMode === "cerrada" ? "invisible" : ""
                       }`}
                       title="Desvincular pregunta"
                     >

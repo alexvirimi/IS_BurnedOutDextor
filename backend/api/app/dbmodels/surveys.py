@@ -48,10 +48,14 @@ class Surveys(Base):
     aperture_date: Mapped[Date] = mapped_column(Date)
     finishing_date: Mapped[Date] = mapped_column(Date)
     status: Mapped[str] = mapped_column(
-        Enum(SurveyStatus, native_enum=False),
-        default=SurveyStatus.CERRADA,
-        nullable=False
-    )
+        Enum(
+        SurveyStatus,
+        native_enum=False,
+        values_callable=lambda enum_cls: [e.value for e in enum_cls],
+        validate_strings=True,
+    ),
+    nullable=False,
+)
 
     __table_args__ = (
         CheckConstraint(

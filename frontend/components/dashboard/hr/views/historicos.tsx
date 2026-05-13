@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
-import { PowerBIPlaceholder } from "@/components/dashboard/shared/power-bi-placeholder";
+import { BurnoutLineChart } from "@/components/dashboard/shared/burnout-line-chart";
 import { ReporteList } from "@/components/dashboard/shared/reporte-list";
 import {
   useHistoricoReportsHR,
@@ -185,10 +185,7 @@ export function HRHistoricos({ type }: HRHistoricosProps) {
 
       {/* Power BI placeholder — shows selected report name */}
       <div className="mb-4">
-        <PowerBIPlaceholder
-          label={`Power BI · ${SUBTITLES[type]}`}
-          powerBiTitle={selectedReporte?.nombre ?? ""}
-        />
+        <BurnoutLineChart title={selectedReporte?.nombre} />
       </div>
 
       {/* Scope selector */}

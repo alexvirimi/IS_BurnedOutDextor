@@ -88,6 +88,43 @@ def read_results(
         detail="No tienes permiso para ver resultados"
     )
 
+# Mapeo canónico: clase → valor numérico para graficar
+_CLASS_TO_SCORE: dict[str, int] = {
+    "Muy Bajo": 1,
+    "Bajo": 2,
+    "Medio": 3,
+    "Moderado": 4,
+    "Alto": 5,
+}
+
+@router.get(
+    "/my-progress",
+    response_model=list[dict],
+    status_code=status.HTTP_200_OK
+)
+def get_my_progress(
+    current_user: CurrentUserData = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Devuelve el historial de resultados del usuario autenticado,
+    con fecha y valor numérico (1-5) para graficar.
+    Ordenados por fecha ascendente.
+    """
+    service = ResultService(db)
+    results = service.get_results_by_worker(current_user.worker_id)
+
+    data = []
+    for r in sorted(results, key=lambda x: x.generation_date):
+        data.append({
+            "fecha": r.generation_date.isoformat(),
+            "clase": r.burnout_class,
+            "valor": _CLASS_TO_SCORE.get(r.burnout_class, 0),
+            "confianza": float(r.burnout_confidence),
+            "encuesta_id": str(r.id_survey),
+        })
+
+    return data
 
 @router.get(
     "/{result_id}",
@@ -133,44 +170,6 @@ def read_result(
             )
 
     return result
-
-# Mapeo canónico: clase → valor numérico para graficar
-_CLASS_TO_SCORE: dict[str, int] = {
-    "Muy Bajo": 1,
-    "Bajo": 2,
-    "Medio": 3,
-    "Moderado": 4,
-    "Alto": 5,
-}
-
-@router.get(
-    "/my-progress",
-    response_model=list[dict],
-    status_code=status.HTTP_200_OK
-)
-def get_my_progress(
-    current_user: CurrentUserData = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Devuelve el historial de resultados del usuario autenticado,
-    con fecha y valor numérico (1-5) para graficar.
-    Ordenados por fecha ascendente.
-    """
-    service = ResultService(db)
-    results = service.get_results_by_worker(current_user.worker_id)
-
-    data = []
-    for r in sorted(results, key=lambda x: x.generation_date):
-        data.append({
-            "fecha": r.generation_date.isoformat(),
-            "clase": r.burnout_class,
-            "valor": _CLASS_TO_SCORE.get(r.burnout_class, 0),
-            "confianza": float(r.burnout_confidence),
-            "encuesta_id": str(r.id_survey),
-        })
-
-    return data
 
 @router.patch(
     "/{result_id}/flag",
