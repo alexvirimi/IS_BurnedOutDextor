@@ -17,38 +17,52 @@ from sqlalchemy.orm import joinedload
 from app.dbmodels import Surveys, QuestionSurveys
 from app.deps.auth_deps import require_rrhh
 from app.schemas.auth_scheme import CurrentUserData
+from pydantic import ValidationError
+from datetime import date as date_type
 
 router = APIRouter(prefix="/survey", tags=["Survey"])
 
 
 @router.get("/", response_model=list[SurveyResponse])
 def read_surveys(db: Session = Depends(get_db)):
+    """Get all surveys"""
     service = SurveyService(db)
     return service.get_surveys()
 
 
 @router.get("/{survey_id}", response_model=SurveyResponse)
 def read_survey(survey_id: UUID, db: Session = Depends(get_db)):
+    """Get survey by ID"""
     service = SurveyService(db)
     survey = service.get_survey(survey_id)
     if not survey:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Encuesta no encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Encuesta no encontrada"
+        )
     return survey
 
 
 @router.get("/{survey_id}/questions", response_model=SurveyWithQuestions, status_code=status.HTTP_200_OK)
 def read_survey_with_questions(survey_id: UUID, db: Session = Depends(get_db)):
+    """Get survey with all questions"""
     service = SurveyService(db)
     survey = service.get_survey(survey_id)
     if not survey:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Encuesta no encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Encuesta no encontrada"
+        )
 
     survey_with_questions = db.query(Surveys).options(
         joinedload(Surveys.question_surveys).joinedload(QuestionSurveys.question)
     ).filter(Surveys.id == survey_id).first()
 
     if not survey_with_questions:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Encuesta no encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Encuesta no encontrada"
+        )
 
     questions = [qs.question for qs in survey_with_questions.question_surveys]
     return {
@@ -60,10 +74,14 @@ def read_survey_with_questions(survey_id: UUID, db: Session = Depends(get_db)):
 
 @router.get("/{survey_id}/complete", response_model=SurveyComplete, status_code=status.HTTP_200_OK)
 def read_survey_complete(survey_id: UUID, db: Session = Depends(get_db)):
+    """Get complete survey information with calculated status"""
     service = SurveyService(db)
     survey_complete = service.get_survey_complete(survey_id, db)
     if not survey_complete:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Encuesta no encontrada")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Encuesta no encontrada"
+        )
     return survey_complete
 
 
@@ -73,8 +91,27 @@ def create_survey(
     current_user: CurrentUserData = Depends(require_rrhh),
     db: Session = Depends(get_db),
 ):
+    """
+    Create a new survey. Only RRHH can create surveys.
+    
+    Validations:
+    - aperture_date cannot be in the future
+    - finishing_date must be after aperture_date
+    - status is automatically calculated based on dates
+    """
     service = SurveyService(db)
-    return service.create_survey(payload.model_dump())
+    try:
+        return service.create_survey(payload.model_dump())
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.patch("/{survey_id}", response_model=SurveyResponse, status_code=status.HTTP_200_OK)
@@ -85,16 +122,28 @@ def update_survey(
     db: Session = Depends(get_db),
 ):
     """
-    Actualización parcial de una encuesta. Solo RRHH.
-    Acepta cualquier combinación de: name, aperture_date, finishing_date, status.
-    Solo se modifican los campos enviados en el body.
+    Partial survey update. Only RRHH can update surveys.
+    
+    Accepts any combination of: name, aperture_date, finishing_date, status.
+    Only the provided fields are modified.
+    
+    Validations:
+    - finishing_date must be after aperture_date
+    - status must be 'activa' or 'cerrada'
+    - If dates are updated, status is automatically recalculated
     """
     service = SurveyService(db)
-    # exclude_none=True ensures only supplied fields are written
-    updated = service.update_survey(survey_id, payload.model_dump(exclude_none=True))
-    if not updated:
+    try:
+        # exclude_none=True ensures only supplied fields are written
+        updated = service.update_survey(survey_id, payload.model_dump(exclude_none=True))
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Encuesta no encontrada",
+            )
+        return updated
+    except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Encuesta no encontrada",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
         )
-    return updated

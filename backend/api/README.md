@@ -1,76 +1,61 @@
 # Inbudex API
 
+API principal del proyecto `IS_BurnedOutDextor`.
+
 ## Overview
 
-- ⚡ [**FastAPI**](https://fastapi.tiangolo.com) for the Python backend API.
-  - 🧰 [SQLAlchemy](https://www.sqlalchemy.org) for the Python SQL database interactions (ORM).
-  - 🔍 [Pydantic](https://docs.pydantic.dev), used by FastAPI, for the data validation and settings management.
-- 📦 [**Poetry**](https://python-poetry.org/) to manage the dependencies and enviroment needed for the project.
+- ⚡ [FastAPI](https://fastapi.tiangolo.com)
+- 🧰 SQLAlchemy como ORM
+- 🔍 Pydantic para validación y esquemas
+- 📦 Poetry para la gestión de dependencias
 
-## 📈 Project Status
+## Estado del proyecto
 
-> **Current Phase:** In Development
+> **Fase:** En desarrollo
 
-## ⚙️ Installation & Setup
-
-### Requirements
+## Requisitos
 
 - Python 3.12+
-- Docker (for containerized environments)
+- Poetry
+- PostgreSQL (local o via Docker)
 
-### Local Setup
-
-1. Install Poetry
-   - Mac/Linux
-
-   ```bash
-   brew install pipx
-   pipx install poetry --python python3.12
-   ```
-
-   - Windows
-
-   ```
-   winget install Python.Python.3.12
-   pip install --user pipx
-   pipx ensurepath
-   pipx install poetry
-   ```
-
-   To ensure poetry is up and running
-
-   ```bash
-   poetry --version
-   ```
-
-2. Install dependecies
-
-   ```bash
-   poetry install
-   ```
-
-3. Activate the virtual enviroment
-   1. find the environment path:
-
-   ```bash
-   poetry env info --path
-   ```
-
-   2. Then, activate:
-      - Mac/Linux
-
-      ```bash
-      source <POETRYPATH>/bin/activate
-      ```
-
-      - Windows
-
-      ```bash
-      <POETRYPATH>\Scripts\Activate.ps1
-      ```
-
-4. Run the API (not yet possible)
+## Instalación local
 
 ```bash
-poetry run uvicorn inbudex.main:app --reload
+cd backend/api
+poetry install
 ```
+
+## Ejecución local
+
+```bash
+cd backend/api
+poetry run uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+```
+
+La documentación automática queda disponible en `http://localhost:8001/docs`.
+
+## Variables de entorno
+
+- `DATABASE_URL`: cadena de conexión a PostgreSQL.
+- `JWT_SECRET_KEY`: clave secreta para tokens JWT.
+- `SQLALCHEMY_ECHO`: `true`/`false` para el log de SQL.
+- `ALLOWED_ORIGINS`: orígenes permitidos para CORS.
+
+## Con Docker Compose
+
+Desde la raíz del repo:
+
+```bash
+docker compose up --build
+```
+
+## Documentación relevante
+
+- `docs/endpoints.md`
+- `backend/api/pyproject.toml`
+- `backend/api/app/main.py`
+
+## Notas
+
+El backend principal expone múltiples rutas para la gestión de áreas, trabajadores, encuestas, preguntas, resultados y autenticación.

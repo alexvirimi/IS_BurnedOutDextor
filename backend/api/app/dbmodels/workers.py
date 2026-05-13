@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import uuid
 from typing import TYPE_CHECKING
+import enum
 from sqlalchemy import (
     String,
     Integer,
     ForeignKey,
     UUID,
-    Boolean
+    Boolean,
+    Enum,
+    CheckConstraint
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -25,6 +28,13 @@ if TYPE_CHECKING:
     from .result import Result
     from .survey_assignments import SurveyWorkerAssignment
 
+
+class GenderEnum(str, enum.Enum):
+    """Worker gender enum - restricted to M and F"""
+    MALE = "M"
+    FEMALE = "F"
+
+
 class Worker(Base):
     __tablename__ = 'worker'
 
@@ -36,7 +46,10 @@ class Worker(Base):
     name: Mapped[str] = mapped_column(String(100))
     last_names: Mapped[str] = mapped_column(String(150))
     age: Mapped[int] = mapped_column(Integer)
-    gender: Mapped[str] = mapped_column(String(20))
+    gender: Mapped[str] = mapped_column(
+        Enum(GenderEnum, native_enum=False),
+        nullable=False
+    )
 
     id_group: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), 

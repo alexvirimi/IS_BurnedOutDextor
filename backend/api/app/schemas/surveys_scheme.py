@@ -4,16 +4,40 @@ from fastapi import Form
 from pydantic import BaseModel, field_validator, model_validator
 from uuid import UUID
 from datetime import date
-from typing import Literal, Optional
+from typing import Optional
 from app.schemas.psicometric_variable_scheme import PsicometricVariableResponse
+from app.dbmodels.surveys import SurveyStatus  # ✅ Importa el Enum
 
 
 class SurveyCreate(BaseModel):
-    # Crear nueva encuesta con fechas y estado
+    # Crear nueva encuesta con fechas
+    # NOTA: El status se calcula automáticamente, no es necesario enviarlo
     name: str
     aperture_date: date
     finishing_date: date
-    status: str
+    status: Optional[SurveyStatus] = None  # ✅ Opcional porque se ignora y se calcula auto
+
+    @field_validator('aperture_date')
+    @classmethod
+    def aperture_date_not_future(cls, v: date) -> date:
+        """Validate that aperture_date is not in the future"""
+        from datetime import date as date_type
+        today = date_type.today()
+        if v > today:
+            raise ValueError("La fecha de apertura no puede ser en el futuro")
+        return v
+
+    # ❌ ELIMINA el validator de status - el Enum ya valida automáticamente
+    # y además se calcula en el servicio
+
+    @model_validator(mode="after")
+    def dates_coherent(self) -> "SurveyCreate":
+        """Validate that finishing_date is after aperture_date"""
+        if self.finishing_date <= self.aperture_date:
+            raise ValueError(
+                "La fecha de cierre debe ser posterior a la fecha de apertura"
+            )
+        return self
 
     @classmethod
     def as_form(
@@ -21,7 +45,7 @@ class SurveyCreate(BaseModel):
         name: str = Form(...),
         aperture_date: date = Form(...),
         finishing_date: date = Form(...),
-        status: str = Form(...),
+        status: Optional[SurveyStatus] = Form(None),  # ✅ Opcional en el form
     ):
         return cls(
             name=name,
@@ -39,7 +63,7 @@ class SurveyUpdate(BaseModel):
     name: Optional[str] = None
     aperture_date: Optional[date] = None
     finishing_date: Optional[date] = None
-    status: Optional[Literal["activa", "finalizada"]] = None
+    status: Optional[SurveyStatus] = None  # ✅ Usa el Enum directamente
 
     @field_validator("name")
     @classmethod
@@ -48,15 +72,17 @@ class SurveyUpdate(BaseModel):
             raise ValueError("El nombre no puede estar vacío")
         return v
 
+    # ❌ ELIMINA el validator de status - el Enum ya valida automáticamente
+
     @model_validator(mode="after")
     def dates_coherent(self) -> "SurveyUpdate":
         if (
             self.aperture_date is not None
             and self.finishing_date is not None
-            and self.finishing_date < self.aperture_date
+            and self.finishing_date <= self.aperture_date
         ):
             raise ValueError(
-                "La fecha de cierre no puede ser anterior a la fecha de apertura"
+                "La fecha de cierre debe ser posterior a la fecha de apertura"
             )
         return self
 
@@ -89,7 +115,7 @@ class SurveyResponse(BaseModel):
     name: str
     aperture_date: date
     finishing_date: date
-    status: str
+    status: SurveyStatus  # ✅ Usa el Enum para consistencia
     model_config = {"from_attributes": True}
 
 
@@ -111,7 +137,7 @@ class SurveyComplete(BaseModel):
     name: str
     aperture_date: date
     finishing_date: date
-    status: str
+    status: SurveyStatus  # ✅ Usa el Enum
     questions: list[QuestionComplete]
     answer_options: list[AnswerOption]
     model_config = {"from_attributes": True}

@@ -20,6 +20,7 @@ from app.routes.workers_cr_service import router as worker_router
 from app.routes.auth_service import router as auth_router
 from app.routes.psicometric_value_r_service import router as psicometric_variable_router
 from app.routes.burnout_routes import router as burnout_router
+from app.routes.intervention_routes import router as intervention_router
 
 # ─── App ──────────────────────────────────────────────────────────────────────
 #
@@ -105,6 +106,7 @@ app.include_router(worker_router)
 app.include_router(auth_router)
 app.include_router(psicometric_variable_router)
 app.include_router(burnout_router)
+app.include_router(intervention_router)
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(static_dir):

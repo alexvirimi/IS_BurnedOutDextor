@@ -2,17 +2,20 @@
 
 from typing import Optional
 from fastapi import Form
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from uuid import UUID
+from app.dbmodels.workers import GenderEnum  
 
 
 class WorkerCreate(BaseModel):
     name: str
     last_names: str
     age: int
-    gender: str
+    gender: GenderEnum  
     id_group: UUID
     id_rank: UUID
+
+
 
     @classmethod
     def as_form(
@@ -20,7 +23,7 @@ class WorkerCreate(BaseModel):
         name: str = Form(...),
         last_names: str = Form(...),
         age: int = Form(...),
-        gender: str = Form(...),
+        gender: GenderEnum = Form(...),  
         id_group: UUID = Form(...),
         id_rank: UUID = Form(...),
     ):
@@ -39,7 +42,7 @@ class WorkerDetailResponse(BaseModel):
     name: str
     last_names: str
     age: int
-    gender: str
+    gender: GenderEnum 
     id_group: Optional[UUID] = None
     id_rank: Optional[UUID] = None
     group: Optional[str] = None
@@ -52,7 +55,7 @@ class WorkerResponse(BaseModel):
     name: str
     last_names: str
     age: int
-    gender: str
+    gender: GenderEnum  # ✅ Usa el Enum para consistencia
     id_group: UUID
     id_rank: UUID
     model_config = {"from_attributes": True}
