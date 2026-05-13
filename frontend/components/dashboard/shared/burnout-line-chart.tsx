@@ -3,31 +3,17 @@
 /**
  * BurnoutLineChart
  * ─────────────────
+ * FIX: The component was always self-fetching in "self" mode even when
+ * the parent passed `dataSource`. This caused two competing fetch loops:
+ * one from the internal useEffect and one from useBurnoutChart in the parent.
+ * The fix: only self-fetch when dataSource is literally `undefined` (not passed).
+ * When dataSource is passed (even as null or []), always use it directly.
+ *
  * Supports two rendering modes:
- *
- * 1. SELF mode (default, no props needed)
- *    Fetches GET /results/my-progress and renders the logged-in user's history.
- *
- * 2. EXTERNAL mode (pass `dataSource`)
- *    Renders whatever ProgressPoint[] is provided — caller is responsible for
- *    fetching the right endpoint (individual worker, group avg, area avg).
- *    The chart itself is completely data-agnostic.
- *
- * Optional `mode` label ("individual" | "group" | "area") tweaks tooltip copy.
- * Optional `title` shown above the chart.
- *
- * Usage:
- *   // Self (my-progress):
- *   <BurnoutLineChart />
- *
- *   // Individual worker (by HR/PM):
- *   <BurnoutLineChart dataSource={points} mode="individual" title="Ana Meza" />
- *
- *   // Group average:
- *   <BurnoutLineChart dataSource={points} mode="group" title="REPORTE DE …" />
- *
- *   // Area average:
- *   <BurnoutLineChart dataSource={points} mode="area" title="REPORTE DE …" />
+ * 1. SELF mode — only activated when `dataSource` prop is NOT passed at all.
+ *    Fetches GET /results/my-progress internally.
+ * 2. EXTERNAL mode — when `dataSource` is passed (null, [], or ProgressPoint[]).
+ *    Renders whatever is provided; caller handles fetching via useBurnoutChart.
  */
 
 import { useEffect, useState } from "react";
@@ -47,12 +33,11 @@ import { apiFetch } from "@/lib/api/context";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ProgressPoint {
-  fecha: string; // ISO date "2025-06-01"
-  clase: string; // "Bajo", "Moderado", etc.
-  valor: number; // 1–5 (may be fractional for aggregated averages)
-  confianza: number; // 0.0–1.0
+  fecha: string;
+  clase: string;
+  valor: number;
+  confianza: number;
   encuesta_id: string;
-  /** Only present in group/area aggregated points */
   workers?: number;
 }
 
@@ -60,23 +45,13 @@ export type ChartMode = "self" | "individual" | "group" | "area";
 
 export interface BurnoutLineChartProps {
   /**
-   * When provided, the chart renders this data directly without fetching.
-   * When omitted, the chart fetches GET /results/my-progress (self mode).
+   * When provided (including null or []), the chart uses this data directly.
+   * When NOT provided (undefined), the chart self-fetches /results/my-progress.
    */
   dataSource?: ProgressPoint[] | null;
-  /**
-   * Semantic mode — drives tooltip copy and legend label.
-   * Defaults to "self" when dataSource is omitted, "individual" otherwise.
-   */
   mode?: ChartMode;
-  /** Short title shown above the chart */
   title?: string;
-  /** Chart area height in px (default 280) */
   height?: number;
-  /**
-   * When true the chart shows a subtle loading skeleton instead of data.
-   * Useful when the parent is still fetching but wants to pre-render the card.
-   */
   loading?: boolean;
 }
 
@@ -102,7 +77,6 @@ const PRIMARY = "#2694D2";
 const FOREGROUND = "#3D4676";
 const MUTED = "#9ca3af";
 
-// Maps a (possibly fractional) score to the nearest colour bucket
 function scoreColor(valor: number): string {
   const rounded = Math.round(valor);
   return SCORE_TO_COLOR[Math.max(1, Math.min(5, rounded))] ?? PRIMARY;
@@ -215,18 +189,18 @@ export function BurnoutLineChart({
   height = 280,
   loading: externalLoading = false,
 }: BurnoutLineChartProps) {
-  // Determine effective mode
-  const effectiveMode: ChartMode =
-    mode ?? (dataSource === undefined ? "self" : "individual");
+  // KEY FIX: only self-fetch when dataSource was NOT provided at all (undefined).
+  // If the parent passes null or [] we use that directly — no internal fetch.
+  const isSelfMode = dataSource === undefined;
+  const effectiveMode: ChartMode = mode ?? (isSelfMode ? "self" : "individual");
 
-  // Internal state — only used in self mode
   const [selfData, setSelfData] = useState<ProgressPoint[]>([]);
-  const [selfLoading, setSelfLoading] = useState(effectiveMode === "self");
+  const [selfLoading, setSelfLoading] = useState(isSelfMode);
   const [selfError, setSelfError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Only self-fetch when no external dataSource was provided
-    if (effectiveMode !== "self") return;
+    // Only run when we are truly in self-mode (no dataSource prop passed).
+    if (!isSelfMode) return;
 
     let cancelled = false;
     async function load() {
@@ -248,16 +222,14 @@ export function BurnoutLineChart({
     return () => {
       cancelled = true;
     };
-  }, [effectiveMode]);
+  }, [isSelfMode]);
 
-  // Resolve which data and loading/error states to display
-  const data: ProgressPoint[] =
-    effectiveMode === "self" ? selfData : (dataSource ?? []);
-  const isLoading =
-    externalLoading || (effectiveMode === "self" && selfLoading);
-  const error = effectiveMode === "self" ? selfError : null;
+  // Resolve which data / loading / error to show
+  const data: ProgressPoint[] = isSelfMode ? selfData : (dataSource ?? []);
+  const isLoading = externalLoading || (isSelfMode && selfLoading);
+  const error = isSelfMode ? selfError : null;
 
-  // ── Empty/loading/error states ──────────────────────────────────────────
+  // ── States ────────────────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
@@ -286,7 +258,7 @@ export function BurnoutLineChart({
     );
   }
 
-  // dataSource explicitly null means "not selected yet"
+  // dataSource === null means "nothing selected yet" — show hint
   if (dataSource === null) {
     return (
       <div
@@ -309,7 +281,7 @@ export function BurnoutLineChart({
       >
         <TrendingUp className="w-8 h-8 text-muted-foreground opacity-40" />
         <p className="text-sm text-muted-foreground font-sans">
-          {effectiveMode === "self"
+          {isSelfMode
             ? "Completa una encuesta para ver tu progreso aquí."
             : "No hay datos disponibles para este reporte."}
         </p>
