@@ -1,12 +1,17 @@
 # Servicio para gestionar operaciones de respuestas de encuestas.
 
+import asyncio
+import logging
 from app.controllers.cr_controller import UniversalRepository as ur
 from app.dbmodels import Answer
 from sqlalchemy.orm import Session
+from sqlalchemy import func, text
 from uuid import UUID
 from fastapi import HTTPException, status
 from app.dbmodels import Group, Worker, Area, QuestionSurveys, Surveys
 from datetime import date
+
+logger = logging.getLogger(__name__)
 
 # ─── Constante canónica ───────────────────────────────────────────────────────
 # Una sola fuente de verdad para el valor de estado. Si el backend cambia el
@@ -28,6 +33,83 @@ def _assert_survey_is_open(survey: Surveys) -> None:
                 "y no acepta nuevas respuestas."
             ),
         )
+
+
+def _check_survey_completion(db: Session, worker_id: UUID, survey_id: UUID) -> bool:
+    """
+    Verifica si un trabajador ha respondido TODAS las preguntas de una encuesta.
+    Retorna True si la encuesta está completa para ese trabajador.
+    """
+    try:
+        # Contar total de preguntas en la encuesta
+        total_questions = db.query(func.count(QuestionSurveys.id)).filter(
+            QuestionSurveys.id_survey == survey_id
+        ).scalar()
+
+        # Contar respuestas del trabajador para esta encuesta
+        answered_questions = db.query(func.count(Answer.id)).join(
+            QuestionSurveys
+        ).filter(
+            Answer.id_worker == worker_id,
+            QuestionSurveys.id_survey == survey_id
+        ).scalar()
+
+        logger.info(
+            f"Survey completion check - Worker: {worker_id}, "
+            f"Survey: {survey_id}, Total: {total_questions}, "
+            f"Answered: {answered_questions}"
+        )
+
+        return answered_questions >= total_questions
+    except Exception as e:
+        logger.error(f"Error checking survey completion: {str(e)}")
+        return False
+
+
+async def _trigger_burnout_prediction(
+    db: Session, worker_id: UUID, survey_id: UUID
+) -> bool:
+    """
+    Llama asincronamente al endpoint de predicción de burnout.
+    Captura errores sin bloquear el flujo principal.
+    Retorna True si la predicción fue exitosa, False en caso contrario.
+    """
+    try:
+        # Importar aquí para evitar circular imports
+        from app.servicemodels.burnout_service import BurnoutService
+
+        logger.info(
+            f"Triggering burnout prediction for worker {worker_id}, "
+            f"survey {survey_id}"
+        )
+
+        # Llamar al servicio de predicción (es async)
+        result = await BurnoutService.predict_worker_burnout(
+            db, worker_id, survey_id
+        )
+
+        logger.info(
+            f"Burnout prediction completed successfully for worker {worker_id}: "
+            f"Class={result.burnout_class}, Confidence={result.burnout_confidence}"
+        )
+
+        return True
+
+    except HTTPException as he:
+        logger.warning(
+            f"HTTP Error in burnout prediction for worker {worker_id}: "
+            f"{he.status_code} - {he.detail}"
+        )
+        # No relanzar - permitir que la respuesta se guarde de todos modos
+        return False
+
+    except Exception as e:
+        logger.error(
+            f"Unexpected error in burnout prediction for worker {worker_id}: "
+            f"{str(e)}"
+        )
+        # No relanzar - permitir que la respuesta se guarde de todos modos
+        return False
 
 
 class AnswerService:
@@ -90,6 +172,11 @@ class AnswerService:
         """
         Crea múltiples respuestas de una encuesta de una vez.
         Valida el estado antes de procesar cualquier respuesta.
+        
+        NUEVA FUNCIONALIDAD:
+        - Después de crear las respuestas, verifica si la encuesta está completa
+        - Si está completa, dispara automáticamente la predicción de burnout
+        - La predicción se ejecuta de forma no bloqueante (fire-and-forget)
         """
         worker = ur(Worker, self.db).get_by_id(worker_id)
         if not worker:
@@ -135,6 +222,31 @@ class AnswerService:
             }
             created_answers.append(self.repo.create(answer_create_data))
 
+        # ─────────────────────────────────────────────────────────────────────
+        # NUEVA LÓGICA: Verificar completitud y disparar predicción de burnout
+        # ─────────────────────────────────────────────────────────────────────
+        if _check_survey_completion(self.db, worker_id, survey_id):
+            logger.info(
+                f"Survey {survey_id} completed by worker {worker_id}. "
+                f"Triggering burnout prediction..."
+            )
+            
+            # Dispara la predicción en background sin bloquear la respuesta
+            try:
+                # Crear una tarea asincrónica para ejecutar en background
+                asyncio.create_task(
+                    _trigger_burnout_prediction(self.db, worker_id, survey_id)
+                )
+                logger.info(
+                    f"Burnout prediction task created for worker {worker_id}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to create prediction task: {str(e)}. "
+                    f"Continuing without blocking..."
+                )
+                # No relanzar - permitir que la respuesta se retorne de todos modos
+
         return created_answers
 
     def create_answer_from_user(
@@ -143,6 +255,11 @@ class AnswerService:
         """
         Crea una respuesta desde el usuario autenticado.
         Valida el estado de la encuesta antes de persistir.
+        
+        NUEVA FUNCIONALIDAD:
+        - Después de crear la respuesta, verifica si la encuesta está completa
+        - Si está completa, dispara automáticamente la predicción de burnout
+        - La predicción se ejecuta de forma no bloqueante (fire-and-forget)
         """
         worker = ur(Worker, self.db).get_by_id(worker_id)
         if not worker:
@@ -189,7 +306,36 @@ class AnswerService:
             "value": value,
             "created_at": date.today(),
         }
-        return self.repo.create(answer_data)
+        created_answer = self.repo.create(answer_data)
+
+        # ─────────────────────────────────────────────────────────────────────
+        # NUEVA LÓGICA: Verificar completitud y disparar predicción de burnout
+        # ─────────────────────────────────────────────────────────────────────
+        survey_id = question_survey.id_survey
+        
+        if _check_survey_completion(self.db, worker_id, survey_id):
+            logger.info(
+                f"Survey {survey_id} completed by worker {worker_id}. "
+                f"Triggering burnout prediction..."
+            )
+            
+            # Dispara la predicción en background sin bloquear la respuesta
+            try:
+                # Crear una tarea asincrónica para ejecutar en background
+                asyncio.create_task(
+                    _trigger_burnout_prediction(self.db, worker_id, survey_id)
+                )
+                logger.info(
+                    f"Burnout prediction task created for worker {worker_id}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to create prediction task: {str(e)}. "
+                    f"Continuing without blocking..."
+                )
+                # No relanzar - permitir que la respuesta se retorne de todos modos
+
+        return created_answer
 
     def get_answers_by_worker(self, worker_id: UUID):
         return self.db.query(Answer).filter(Answer.id_worker == worker_id).all()

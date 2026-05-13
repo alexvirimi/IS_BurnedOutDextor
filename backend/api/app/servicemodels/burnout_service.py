@@ -10,6 +10,7 @@ from datetime import datetime, date
 from enum import Enum
 
 import httpx
+import json
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -23,10 +24,13 @@ from app.schemas.burnout_integration_scheme import (
 from app.servicemodels.intervention_service import InterventionService
 
 # Configuración AI Service
-AI_URL = os.getenv(
-    "AI_SERVICE_URL",
-    "http://localhost:8001/predict"
-)
+# Permitir que la variable de entorno sea la URL completa o sólo la base.
+# Si la base no incluye "/predict" se añade automáticamente.
+_ai_env = os.getenv("AI_SERVICE_URL", "http://localhost:8001/predict")
+if _ai_env.rstrip("/").endswith("/predict"):
+    AI_URL = _ai_env
+else:
+    AI_URL = _ai_env.rstrip("/") + "/predict"
 
 
 class BurnoutService:
@@ -199,7 +203,42 @@ class BurnoutService:
         # Convertir TODO a JSON serializable
         features = jsonable_encoder(features)
 
+        # Validar que el payload contiene los campos que el AI service espera
+        required_fields = [
+            "worker_id",
+            "survey_id",
+            "assigned_tasks",
+            "completed_tasks",
+            "absences",
+            "employee_calls",
+            "completion_rate",
+            "seniority_years",
+            "age",
+            "gender_enc",
+            "worker_type_enc",
+            "location_enc",
+            "avg_agotamiento",
+            "avg_despersonalizacion",
+            "eficacia_invertida",
+        ]
+
+        missing = [f for f in required_fields if f not in features]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Payload incompleto para AI Service, faltan campos: {missing}"
+            )
+
+        # Imprimir payload (útil para debugging en logs)
+        print("AI payload keys:", list(features.keys()))
+
         try:
+            # Debug: mostrar la URL del AI service y el payload enviado
+            print("AI_URL:", AI_URL)
+            try:
+                print("AI payload:", json.dumps(features, ensure_ascii=False))
+            except Exception:
+                print("AI payload: <no se pudo serializar a JSON>")
             # Llamar al ai-service
             async with httpx.AsyncClient() as client:
 
@@ -211,6 +250,7 @@ class BurnoutService:
 
                 print("STATUS:", response.status_code)
                 print("BODY:", response.text)
+                print("RESPONSE HEADERS:", dict(response.headers))
 
                 response.raise_for_status()
 
