@@ -397,8 +397,7 @@ export function HRCrearEncuesta() {
       {submitSuccess && (
         <div className="mb-6 flex items-center gap-2 px-4 py-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-sans">
           <Check className="w-4 h-4 flex-shrink-0" />
-          Encuesta creada y asignada correctamente a{" "}
-          <strong>{getTargetLabel(currentTarget)}</strong>.
+          Encuesta creada y asignada correctamente.
         </div>
       )}
 
