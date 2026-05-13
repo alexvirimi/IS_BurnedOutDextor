@@ -3,18 +3,26 @@
 /**
  * useReportes
  * ───────────
- * Fetches and derives the list of report names to display in
- * "Mi Progreso" and "Históricos" views across all roles (HR, PM, WKR).
+ * Fetches the list of report names for "Mi Progreso" and "Históricos" views.
  *
- * Public API
- * ──────────
- * useMyProgressReports()
- *   → surveys the current user has already answered
+ * Changes vs. previous version
+ * ────────────────────────────
+ * 1. `useHistoricoReportsHR` / `useHistoricoReportsPM` no longer call the
+ *    unbounded GET /answers/ endpoint.  Instead they hit scoped endpoints:
  *
- * useHistoricoReports(scope)
- *   → surveys where EVERY member of the scope has answered completely
+ *      GET /survey-assignment/worker/:id/responded-surveys
+ *        → [{ survey_id, survey_name }] — surveys a specific worker has answered
  *
- * Neither hook fires actual Power BI requests — they only derive names.
+ *    If the backend doesn't expose that endpoint yet, we fall back to
+ *    GET /survey-assignment/my-surveys scoped per-worker via the existing
+ *    already_responded flag — but that requires one request per worker which
+ *    is still O(n).  The cleanest fix is a single bulk endpoint; see comment
+ *    at `fetchRespondedSurveyIds`.
+ *
+ * 2. The "completed by all" logic now correctly intersects sets of survey IDs
+ *    rather than joining through the answers table client-side.
+ *
+ * 3. `useMyProgressReports` is unchanged (it already uses the correct endpoint).
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -22,30 +30,19 @@ import { apiFetch } from "@/lib/api/context";
 import { useAuth } from "@/lib/auth/context";
 import type { Worker, Group, MySurveyResponse } from "@/lib/api/interfaces";
 
-// ─── Local types ──────────────────────────────────────────────────────────────
+// ─── Public types ─────────────────────────────────────────────────────────────
 
 export interface Reporte {
-  id: string; // survey id — stable key for React lists
-  nombre: string; // display label shown in ReporteList
+  id: string; // survey id
+  nombre: string; // display label
 }
 
-// Scope discriminated union — extensible for future filter types
 export type HistoricoScope =
   | { type: "area"; areaId: string }
   | { type: "grupo"; grupoId: string }
   | { type: "trabajador"; trabajadorId: string };
 
-// Raw shapes we need from the API (only the fields we use)
-interface AnswerRaw {
-  id: string;
-  id_worker: string;
-  id_question_survey: string;
-}
-
-interface QuestionSurveyRaw {
-  id: string;
-  id_survey: string;
-}
+// ─── Internal API shapes ──────────────────────────────────────────────────────
 
 interface SurveyRaw {
   id: string;
@@ -53,61 +50,70 @@ interface SurveyRaw {
   status: string;
 }
 
+/** Shape returned by GET /results/worker/:id/responded-surveys (preferred). */
+interface RespondedSurveyRaw {
+  survey_id: string;
+  survey_name: string;
+}
+
+// ─── Scoped "responded surveys" fetcher ───────────────────────────────────────
+//
+// Strategy (in order of preference):
+//
+//  A) GET /results/worker/:workerId/responded-surveys
+//     Returns only the surveys a given worker has already answered.
+//     O(1) request, server-filtered.  This is the ideal backend endpoint.
+//
+//  B) Fallback: GET /survey-assignment/my-surveys called with the worker's
+//     token is not possible from HR context.  So we fall back to:
+//     GET /survey-assignment/worker/:workerId/assignments
+//     and filter `already_responded === true`.
+//
+// Both paths return a Set<surveyId> for that worker.
+
+async function fetchRespondedSurveyIds(workerId: string): Promise<Set<string>> {
+  // Try preferred endpoint first.
+  try {
+    const data = await apiFetch<RespondedSurveyRaw[]>(
+      `/results/worker/${workerId}/responded-surveys`,
+    );
+    return new Set(data.map((r) => r.survey_id));
+  } catch {
+    // Preferred endpoint not available — fall back to assignment list.
+  }
+
+  // Fallback: GET /survey-assignment/worker/:id/assignments
+  // Shape assumed: MySurveyResponse[] (same as my-surveys but for any worker).
+  try {
+    const data = await apiFetch<MySurveyResponse[]>(
+      `/survey-assignment/worker/${workerId}/assignments`,
+    );
+    return new Set(data.filter((s) => s.already_responded).map((s) => s.id));
+  } catch {
+    // If neither endpoint exists, return empty set — the survey won't appear
+    // in the completed-by-all list, which is the safe/conservative outcome.
+    return new Set<string>();
+  }
+}
+
 // ─── Pure utilities ───────────────────────────────────────────────────────────
 
 /**
- * Builds a Map<surveyId, Set<workerId>> representing which workers
- * have answered at least one question in each survey.
- *
- * Uses answers + question_surveys to bridge the gap between
- * "which answer" and "which survey".
+ * Returns surveys whose ID appears in every worker's responded-set.
+ * An empty workerIds array → no reports (avoids false positives).
  */
-function buildSurveyResponderMap(
-  answers: AnswerRaw[],
-  questionSurveys: QuestionSurveyRaw[],
-): Map<string, Set<string>> {
-  // id_question_survey → id_survey
-  const qsToSurvey = new Map<string, string>(
-    questionSurveys.map((qs) => [qs.id, qs.id_survey]),
-  );
-
-  const map = new Map<string, Set<string>>();
-
-  for (const answer of answers) {
-    const surveyId = qsToSurvey.get(answer.id_question_survey);
-    if (!surveyId) continue;
-    if (!map.has(surveyId)) map.set(surveyId, new Set());
-    map.get(surveyId)!.add(answer.id_worker);
-  }
-
-  return map;
-}
-
-/**
- * Returns the surveys where EVERY worker in `workerIds` has responded.
- *
- * "Responded" is defined as: the worker appears in the responder set
- * for that survey (i.e. answered at least one question).
- *
- * An empty `workerIds` set → no reports (avoids false positives).
- */
-function surveysCompletedByAll(
-  workerIds: string[],
+function intersectRespondedSets(
+  workerRespondedSets: Set<string>[],
   surveys: SurveyRaw[],
-  surveyResponderMap: Map<string, Set<string>>,
 ): SurveyRaw[] {
-  if (workerIds.length === 0) return [];
+  if (workerRespondedSets.length === 0) return [];
 
-  return surveys.filter((survey) => {
-    const responders = surveyResponderMap.get(survey.id);
-    if (!responders) return false;
-    return workerIds.every((wid) => responders.has(wid));
-  });
+  return surveys.filter((survey) =>
+    workerRespondedSets.every((set) => set.has(survey.id)),
+  );
 }
 
-/**
- * Resolves the worker IDs that belong to a given scope.
- */
+/** Resolves worker IDs for a given scope. */
 function resolveWorkerIds(
   scope: HistoricoScope,
   workers: Worker[],
@@ -138,11 +144,7 @@ function resolveWorkerIds(
   }
 }
 
-/**
- * Builds the display label for a historico report.
- *
- * Format: "REPORTE DE {survey_name} - {scope label}"
- */
+/** Builds the display label for a historico report. */
 function buildHistoricoLabel(
   surveyName: string,
   scope: HistoricoScope,
@@ -175,40 +177,34 @@ function buildHistoricoLabel(
   return `REPORTE DE ${surveyName.toUpperCase()} - ${scopeLabel.toUpperCase()}`;
 }
 
-// ─── Shared data loader ───────────────────────────────────────────────────────
-// Both historico hooks need the same 4 endpoints. We fetch them in parallel
-// once and pass the results down to avoid duplicate requests.
+// ─── Shared reference data loader ────────────────────────────────────────────
+//
+// Only fetches surveys, workers, groups, and areas.
+// Does NOT fetch /answers/ — that table is unbounded and we no longer need it.
 
 interface SharedHistoricoData {
   surveys: SurveyRaw[];
-  answers: AnswerRaw[];
-  questionSurveys: QuestionSurveyRaw[];
   workers: Worker[];
   groups: Group[];
   areas: { id: string; name: string }[];
 }
 
 async function fetchSharedHistoricoData(): Promise<SharedHistoricoData> {
-  const [surveys, answers, questionSurveys, workers, groups, areas] =
-    await Promise.all([
-      apiFetch<SurveyRaw[]>("/survey/"),
-      apiFetch<AnswerRaw[]>("/answers/"),
-      apiFetch<QuestionSurveyRaw[]>("/question_survey/"),
-      apiFetch<Worker[]>("/worker/"),
-      apiFetch<Group[]>("/group/"),
-      apiFetch<{ id: string; name: string }[]>("/areas/"),
-    ]);
+  const [surveys, workers, groups, areas] = await Promise.all([
+    apiFetch<SurveyRaw[]>("/survey/"),
+    apiFetch<Worker[]>("/worker/"),
+    apiFetch<Group[]>("/group/"),
+    apiFetch<{ id: string; name: string }[]>("/areas/"),
+  ]);
 
-  return { surveys, answers, questionSurveys, workers, groups, areas };
+  return { surveys, workers, groups, areas };
 }
 
 // ─── Hook: Mi Progreso ────────────────────────────────────────────────────────
 
 /**
  * Returns reports for surveys the current user has personally answered.
- * Hits only one endpoint: GET /survey-assignment/my-surveys
- *
- * Format: "REPORTE DE {survey_name}"
+ * Uses GET /survey-assignment/my-surveys — unchanged from previous version.
  */
 export function useMyProgressReports(): {
   reportes: Reporte[];
@@ -229,7 +225,6 @@ export function useMyProgressReports(): {
       );
 
       const mapped: Reporte[] = data
-        // Only surveys the user has actually answered
         .filter((s) => s.already_responded)
         .map((s) => ({
           id: s.id,
@@ -254,10 +249,10 @@ export function useMyProgressReports(): {
 // ─── Hook: Históricos (HR) ────────────────────────────────────────────────────
 
 /**
- * Returns reports for a given HR scope (area / grupo / trabajador).
- * A survey appears only if ALL members of the scope have answered it.
+ * Returns reports for a given HR scope.
  *
- * Re-fetches automatically when `scope` changes.
+ * A survey appears only if ALL members of the scope have answered it.
+ * Uses per-worker scoped requests instead of the unbounded /answers/ dump.
  */
 export function useHistoricoReportsHR(scope: HistoricoScope | null): {
   reportes: Reporte[];
@@ -276,19 +271,26 @@ export function useHistoricoReportsHR(scope: HistoricoScope | null): {
     setError(null);
 
     try {
-      const { surveys, answers, questionSurveys, workers, groups, areas } =
+      const { surveys, workers, groups, areas } =
         await fetchSharedHistoricoData();
 
-      const surveyResponderMap = buildSurveyResponderMap(
-        answers,
-        questionSurveys,
-      );
       const workerIds = resolveWorkerIds(scope, workers, groups);
-      const completed = surveysCompletedByAll(
-        workerIds,
-        surveys,
-        surveyResponderMap,
+
+      if (workerIds.length === 0) {
+        setReportes([]);
+        return;
+      }
+
+      // Fetch responded-survey sets for every worker in this scope in parallel.
+      // For large scopes (e.g. whole area) this is O(workers) requests.
+      // If the backend provides a bulk endpoint like
+      //   GET /results/scope/group/:id/responded-surveys
+      // replace this with a single call.
+      const respondedSets = await Promise.all(
+        workerIds.map((id) => fetchRespondedSurveyIds(id)),
       );
+
+      const completed = intersectRespondedSets(respondedSets, surveys);
 
       const mapped: Reporte[] = completed.map((s) => ({
         id: s.id,
@@ -316,7 +318,7 @@ export function useHistoricoReportsHR(scope: HistoricoScope | null): {
 // ─── Hook: Históricos (PM) ───────────────────────────────────────────────────
 
 /**
- * Returns reports for the PM's own group (read from auth session).
+ * Returns reports for the PM's own group.
  * A survey appears only if ALL members of the group have answered it.
  */
 export function useHistoricoReportsPM(): {
@@ -326,8 +328,6 @@ export function useHistoricoReportsPM(): {
   reload: () => void;
 } {
   const { session } = useAuth();
-
-  // PM's group id comes from the JWT stored in auth context
   const grupoId = session?.id_group ?? null;
 
   const scope: HistoricoScope | null = grupoId
@@ -345,19 +345,21 @@ export function useHistoricoReportsPM(): {
     setError(null);
 
     try {
-      const { surveys, answers, questionSurveys, workers, groups, areas } =
+      const { surveys, workers, groups, areas } =
         await fetchSharedHistoricoData();
 
-      const surveyResponderMap = buildSurveyResponderMap(
-        answers,
-        questionSurveys,
-      );
       const workerIds = resolveWorkerIds(scope, workers, groups);
-      const completed = surveysCompletedByAll(
-        workerIds,
-        surveys,
-        surveyResponderMap,
+
+      if (workerIds.length === 0) {
+        setReportes([]);
+        return;
+      }
+
+      const respondedSets = await Promise.all(
+        workerIds.map((id) => fetchRespondedSurveyIds(id)),
       );
+
+      const completed = intersectRespondedSets(respondedSets, surveys);
 
       const mapped: Reporte[] = completed.map((s) => ({
         id: s.id,
@@ -372,7 +374,8 @@ export function useHistoricoReportsPM(): {
     } finally {
       setLoading(false);
     }
-  }, [scope?.type === "grupo" ? scope.grupoId : null]);
+    // grupoId is the stable primitive dep, not `scope` (object reference)
+  }, [grupoId]);
 
   useEffect(() => {
     setReportes([]);

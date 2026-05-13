@@ -3,26 +3,30 @@
 /**
  * useBurnoutChart
  * ────────────────
- * Fetches the right burnout-progress endpoint based on the selected Reporte.
+ * Fetches the right burnout-progress endpoint based on scope.
  *
- * Accepts a `Reporte` (from useReportes) and a `scope` that tells it which
- * entity to fetch data for.  Returns `{ data, loading, error }` ready to
- * pass directly to <BurnoutLineChart dataSource={data} />.
+ * FIX 1: scope is serialized to a string key for stable comparison —
+ *         passing { type: "self" } inline was creating a new object
+ *         every render, causing useCallback to see a changed dependency
+ *         and triggering an infinite fetch → state update → re-render loop.
+ *
+ * FIX 2: reporteId is kept as a trigger so the chart refetches when the
+ *         user selects a different report, but null still clears the chart
+ *         without fetching.
  *
  * Scope variants:
  *   { type: "self" }                          → GET /results/my-progress
- *   { type: "worker",     workerId: string }  → GET /results/worker/:id/progress
- *   { type: "group",      groupId: string }   → GET /results/group/:id/progress
- *   { type: "area",       areaId: string }    → GET /results/area/:id/progress
- *
- * The hook re-fetches automatically whenever `scope` or `reporteId` changes.
- * Pass `reporteId: null` to clear the chart (dataSource becomes null).
+ *   { type: "worker",  workerId: string }     → GET /results/worker/:id/progress
+ *   { type: "group",   groupId: string }      → GET /results/group/:id/progress
+ *   { type: "area",    areaId: string }       → GET /results/area/:id/progress
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { apiFetch } from "@/lib/api/context";
-import type { ProgressPoint } from "@/components/dashboard/shared/burnout-line-chart";
-import type { ChartMode } from "@/components/dashboard/shared/burnout-line-chart";
+import type {
+  ProgressPoint,
+  ChartMode,
+} from "@/components/dashboard/shared/burnout-line-chart";
 
 // ─── Scope discriminated union ────────────────────────────────────────────────
 
@@ -62,6 +66,24 @@ function buildPath(scope: ChartScope): string | null {
   }
 }
 
+/**
+ * Serializes a ChartScope to a stable string for use as a useEffect dependency.
+ * This avoids the infinite-loop caused by inline object literals like
+ * { type: "self" } which are recreated on every render.
+ */
+function scopeKey(scope: ChartScope): string {
+  switch (scope.type) {
+    case "self":
+      return "self";
+    case "worker":
+      return `worker:${scope.workerId}`;
+    case "group":
+      return `group:${scope.groupId}`;
+    case "area":
+      return `area:${scope.areaId}`;
+  }
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 interface UseBurnoutChartResult {
@@ -81,7 +103,11 @@ export function useBurnoutChart(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async () => {
+  // Stable key — does NOT change when the caller passes a new object literal
+  // with the same logical value (e.g. { type: "self" } every render).
+  const key = scopeKey(scope);
+
+  const fetchData = useCallback(async () => {
     if (reporteId === null) {
       setData(null);
       return;
@@ -104,11 +130,12 @@ export function useBurnoutChart(
     } finally {
       setLoading(false);
     }
-  }, [scope, reporteId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, reporteId]); // key instead of scope — prevents infinite loops
 
   useEffect(() => {
-    fetch();
-  }, [fetch]);
+    fetchData();
+  }, [fetchData]);
 
-  return { data, loading, error, reload: fetch };
+  return { data, loading, error, reload: fetchData };
 }
