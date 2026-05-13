@@ -67,49 +67,87 @@ class BurnoutService:
         """
         Guarda la predicción completa en la tabla result.
         Incluye: clase, confianza, razones y sugerencia de intervención.
+        Permite múltiples resultados si tienen fechas diferentes.
         """
-        query = text("""
-            INSERT INTO result (
-                id,
-                burnout_confidence,
-                burnout_class,
-                burnout_reasons,
-                suggested_intervention,
-                intervention_status,
-                id_worker,
-                id_group,
-                id_area,
-                id_survey,
-                generation_date,
-                flag
-            )
-            SELECT
-                gen_random_uuid(),
-                :burnout_confidence,
-                :burnout_class,
-                :reasons,
-                :suggestion,
-                'Pendiente',
-                :worker_id,
-                w.id_group,
-                g.id_area,
-                :survey_id,
-                CURRENT_DATE,
-                false
-            FROM worker w
-            JOIN "group" g ON g.id = w.id_group
-            WHERE w.id = :worker_id
-            RETURNING id, generation_date
+        # Verificar si ya existe resultado para hoy con este worker y survey
+        check_query = text("""
+            SELECT id, generation_date FROM result
+            WHERE id_worker = :worker_id 
+            AND id_survey = :survey_id 
+            AND generation_date = CURRENT_DATE
         """)
-
-        result = db.execute(query, {
-            "burnout_confidence": data["burnout_confidence"],
-            "burnout_class": data["burnout_class"],
-            "burnout_reasons": "\n".join(data.get("reasons", [])),
-            "suggested_intervention": suggestion,
+        
+        existing = db.execute(check_query, {
             "worker_id": str(worker_id),
             "survey_id": str(survey_id),
         }).mappings().first()
+        
+        if existing:
+            # Actualizar resultado existente de hoy
+            update_query = text("""
+                UPDATE result
+                SET burnout_confidence = :burnout_confidence,
+                    burnout_class = :burnout_class,
+                    burnout_reasons = :burnout_reasons,
+                    suggested_intervention = :suggested_intervention
+                WHERE id_worker = :worker_id 
+                AND id_survey = :survey_id 
+                AND generation_date = CURRENT_DATE
+                RETURNING id, generation_date
+            """)
+            
+            result = db.execute(update_query, {
+                "burnout_confidence": data["burnout_confidence"],
+                "burnout_class": data["burnout_class"],
+                "burnout_reasons": "\n".join(data.get("reasons", [])),
+                "suggested_intervention": suggestion,
+                "worker_id": str(worker_id),
+                "survey_id": str(survey_id),
+            }).mappings().first()
+        else:
+            # Insertar nuevo resultado
+            query = text("""
+                INSERT INTO result (
+                    id,
+                    burnout_confidence,
+                    burnout_class,
+                    burnout_reasons,
+                    suggested_intervention,
+                    intervention_status,
+                    id_worker,
+                    id_group,
+                    id_area,
+                    id_survey,
+                    generation_date,
+                    flag
+                )
+                SELECT
+                    gen_random_uuid(),
+                    :burnout_confidence,         
+                    :burnout_class,
+                    :burnout_reasons,
+                    :suggested_intervention,
+                    'Pendiente',
+                    :worker_id,
+                    w.id_group,
+                    g.id_area,
+                    :survey_id,
+                    CURRENT_DATE,
+                    false
+                FROM worker w
+                JOIN "group" g ON g.id = w.id_group
+                WHERE w.id = :worker_id
+                RETURNING id, generation_date
+            """)
+
+            result = db.execute(query, {
+                "burnout_confidence": data["burnout_confidence"],
+                "burnout_class": data["burnout_class"],
+                "burnout_reasons": "\n".join(data.get("reasons", [])),
+                "suggested_intervention": suggestion,
+                "worker_id": str(worker_id),
+                "survey_id": str(survey_id),
+            }).mappings().first()
 
         db.commit()
 
@@ -193,7 +231,7 @@ class BurnoutService:
                 return BurnoutPredictionResponse(
                     worker_id=ai_data["worker_id"],
                     burnout_class=ai_data["burnout_class"],
-                    burnout_confidence=ai_data["confidence"],
+                    burnout_confidence=ai_data["burnout_confidence"],
                     probabilities=ai_data["probabilities"],
                     reasons=ai_data["reasons"],
                     suggestion=suggestion,
