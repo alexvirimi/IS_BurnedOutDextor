@@ -106,6 +106,8 @@ export function HRCrearEncuesta() {
 
   // ── Fetch al montar ───────────────────────────────────────────────────────
 
+  const today = new Date().toISOString().split("T")[0];
+
   useEffect(() => {
     async function loadAll() {
       setLoadingData(true);
@@ -124,7 +126,7 @@ export function HRCrearEncuesta() {
         setWorkers(workersData);
         setSurveys(surveysData);
         setQuestions(questionsData);
-        setApertureDate(new Date().toISOString().split("T")[0]);
+        setApertureDate(today);
       } catch (err) {
         setFetchError(
           err instanceof Error ? err.message : "Error cargando datos",
@@ -222,9 +224,7 @@ export function HRCrearEncuesta() {
     setConfirmedSurvey(null);
     setSelectedQuestionIds(new Set());
     setLinkedQuestionIds(new Set());
-    setSurveyName("");
-    setApertureDate("");
-    setFinishingDate("");
+    setApertureDate(apertureDate);
     setShowSurveyModal(true);
     setLoadingLinked(false);
   };
@@ -305,7 +305,6 @@ export function HRCrearEncuesta() {
       let surveyId: string;
 
       // 1a. Crear encuesta nueva
-      const today = new Date().toISOString().split("T")[0];
       const newSurvey = await apiPost<Survey>("/survey/", {
         name: surveyName.trim(),
         aperture_date: apertureDate || today,
@@ -341,7 +340,7 @@ export function HRCrearEncuesta() {
       setSelectedQuestionIds(new Set());
       setLinkedQuestionIds(new Set());
       setSurveyName("");
-      setApertureDate("");
+      setApertureDate(today);
       setFinishingDate("");
       setAssignmentTarget({ type: "empresa" });
     } catch (err) {
@@ -441,8 +440,8 @@ export function HRCrearEncuesta() {
             </span>
             <input
               type="date"
-              min={new Date().toISOString().split("T")[0]}
-              value={apertureDate || new Date().toISOString().split("T")[0]}
+              min={today}
+              value={apertureDate || today}
               onChange={(e) => setApertureDate(e.target.value)}
               className="px-4 py-2.5 border border-foreground/30 rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm font-sans"
             />
