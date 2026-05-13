@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import threading
 from app.controllers.cr_controller import UniversalRepository as ur
 from app.dbmodels import Answer
 from sqlalchemy.orm import Session
@@ -253,16 +254,19 @@ class AnswerService:
             
             # Dispara la predicción en background sin bloquear la respuesta
             try:
-                # Crear una tarea asincrónica para ejecutar en background
-                asyncio.create_task(
-                    _trigger_burnout_prediction(worker_id, survey_id)
-                )
+                # Ejecutar la tarea de predicción en un hilo separado que crea
+                # su propio event loop usando asyncio.run. Esto evita el error
+                # "There is no current event loop in thread 'AnyIO worker thread'".
+                threading.Thread(
+                    target=lambda: asyncio.run(_trigger_burnout_prediction(worker_id, survey_id)),
+                    daemon=True,
+                ).start()
                 logger.info(
-                    f"Burnout prediction task created for worker {worker_id}"
+                    f"Burnout prediction thread started for worker {worker_id}"
                 )
             except Exception as e:
                 logger.error(
-                    f"Failed to create prediction task: {str(e)}. "
+                    f"Failed to start prediction thread: {str(e)}. "
                     f"Continuing without blocking..."
                 )
                 # No relanzar - permitir que la respuesta se retorne de todos modos
@@ -341,16 +345,16 @@ class AnswerService:
             
             # Dispara la predicción en background sin bloquear la respuesta
             try:
-                # Crear una tarea asincrónica para ejecutar en background
-                asyncio.create_task(
-                    _trigger_burnout_prediction(worker_id, survey_id)
-                )
+                threading.Thread(
+                    target=lambda: asyncio.run(_trigger_burnout_prediction(worker_id, survey_id)),
+                    daemon=True,
+                ).start()
                 logger.info(
-                    f"Burnout prediction task created for worker {worker_id}"
+                    f"Burnout prediction thread started for worker {worker_id}"
                 )
             except Exception as e:
                 logger.error(
-                    f"Failed to create prediction task: {str(e)}. "
+                    f"Failed to start prediction thread: {str(e)}. "
                     f"Continuing without blocking..."
                 )
                 # No relanzar - permitir que la respuesta se retorne de todos modos
