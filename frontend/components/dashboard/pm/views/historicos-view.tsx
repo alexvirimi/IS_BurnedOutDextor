@@ -1,82 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { PowerBIPlaceholder } from "@/components/dashboard/shared/power-bi-placeholder";
-import {
-  Reporte,
-  ReporteList,
-} from "@/components/dashboard/shared/reporte-list";
+import { ReporteList } from "@/components/dashboard/shared/reporte-list";
+import { useHistoricoReportsPM } from "@/hooks/useReportes";
+import type { Reporte } from "@/hooks/useReportes";
 
+// GroupType kept for prop compatibility with PMDashboard/PMSidebar
 interface PMHistoricosViewProps {
   group: "A" | "B" | "C" | null;
 }
 
-const dataByGroup: Record<
-  "A" | "B" | "C",
-  {
-    reportes: Reporte[];
-  }
-> = {
-  A: {
-    reportes: [
-      {
-        id: 1,
-        nombre: "Reporte Mensual 2025-2 - Grupo A",
-        powerBiTitle: "Dashboard Grupo A - Mayo 2025",
-      },
-      {
-        id: 2,
-        nombre: "Reporte Seguimiento 2025-1-4 - Grupo A",
-        powerBiTitle: "Seguimiento Grupo A - Semana 4",
-      },
-    ],
-  },
-  B: {
-    reportes: [
-      {
-        id: 1,
-        nombre: "Reporte Mensual 2025-2 - Grupo B",
-        powerBiTitle: "Dashboard Grupo B - Mayo 2025",
-      },
-      {
-        id: 2,
-        nombre: "Reporte Seguimiento 2025-1-4 - Grupo B",
-        powerBiTitle: "Seguimiento Grupo B - Semana 4",
-      },
-      {
-        id: 3,
-        nombre: "Reporte Quincenal 2025-3 - Grupo B",
-        powerBiTitle: "Dashboard Grupo B - Quincenal",
-      },
-    ],
-  },
-  C: {
-    reportes: [
-      {
-        id: 1,
-        nombre: "Reporte Mensual 2025-2 - Grupo C",
-        powerBiTitle: "Dashboard Grupo C - Mayo 2025",
-      },
-      {
-        id: 2,
-        nombre: "Reporte Seguimiento 2025-1-4 - Grupo C",
-        powerBiTitle: "Seguimiento Grupo C - Semana 4",
-      },
-    ],
-  },
-};
-
 export function PMHistoricosView({ group }: PMHistoricosViewProps) {
-  const safeGroup = group ?? "A";
-  const reportes = dataByGroup[safeGroup].reportes;
+  // The `group` prop is kept for sidebar compatibility but the actual
+  // group ID comes from the auth token inside useHistoricoReportsPM.
+  // PM leaders only ever see their own group.
+  const { reportes, loading, error } = useHistoricoReportsPM();
+  const [selectedReporte, setSelectedReporte] = useState<Reporte | null>(null);
 
-  // Initialize with the first report of the current group
-  const [selectedReporte, setSelectedReporte] = useState<Reporte>(reportes[0]);
-
-  // Reset selection whenever group changes
   useEffect(() => {
-    setSelectedReporte(dataByGroup[safeGroup].reportes[0]);
-  }, [safeGroup]);
+    setSelectedReporte(reportes.length > 0 ? reportes[0] : null);
+  }, [reportes]);
 
   return (
     <div className="p-8 max-w-5xl">
@@ -87,14 +32,35 @@ export function PMHistoricosView({ group }: PMHistoricosViewProps) {
         VISUALIZACIÓN
       </h1>
 
-      <PowerBIPlaceholder powerBiTitle={selectedReporte?.powerBiTitle || ""} />
+      <PowerBIPlaceholder powerBiTitle={selectedReporte?.nombre ?? ""} />
 
-      <ReporteList
-        reportes={reportes}
-        selectedReporte={selectedReporte}
-        onSelectReporte={setSelectedReporte}
-        title={`REPORTES - GRUPO ${safeGroup}`}
-      />
+      {loading && (
+        <div className="flex items-center gap-3 mt-8 text-muted-foreground">
+          <Loader2 className="animate-spin w-4 h-4" />
+          <span className="text-sm font-sans">Cargando reportes...</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-8 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-sans">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && reportes.length === 0 && (
+        <p className="mt-8 text-sm text-muted-foreground font-sans">
+          No hay encuestas completadas por todos los miembros de tu grupo.
+        </p>
+      )}
+
+      {!loading && reportes.length > 0 && (
+        <ReporteList
+          reportes={reportes}
+          selectedReporte={selectedReporte ?? undefined}
+          onSelectReporte={(r) => setSelectedReporte(r)}
+          title="REPORTES - MI GRUPO"
+        />
+      )}
     </div>
   );
 }

@@ -98,3 +98,17 @@ export interface BulkAnswerPayload {
   id_survey: string;
   answers: BulkAnswerItem[];
 }
+
+// ─── Discriminated union para el scope de asignación ─────────────────────────
+// Diseñado para ser extensible: añadir nuevos scopes (cargo, sede, equipo)
+// solo requiere agregar un nuevo case aquí y un filtro en assignmentService.
+
+export type AssignmentTarget =
+  | { type: "empresa" }
+  | { type: "area"; areaId: string }
+  | { type: "grupo"; grupoId: string }
+  | { type: "trabajador"; trabajadorId: string }
+  // Casos futuros (no implementados aún, reservados para extensión):
+  | { type: "cargo"; cargoId: string }
+  | { type: "sede"; sedeId: string }
+  | { type: "equipo"; equipoId: string };

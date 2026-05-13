@@ -1,28 +1,22 @@
 "use client";
 
-import { useState } from "react";
-
 import { PowerBIPlaceholder } from "@/components/dashboard/shared/power-bi-placeholder";
-import {
-  Reporte,
-  ReporteList,
-} from "@/components/dashboard/shared/reporte-list";
-
-const REPORTES: Reporte[] = [
-  {
-    id: 1,
-    nombre: "Reporte Mensual 2025-2",
-    powerBiTitle: "Dashboard Mensual - Mayo 2025",
-  },
-  {
-    id: 2,
-    nombre: "Reporte Seguimiento 2025-1-4",
-    powerBiTitle: "Seguimiento Semana 4 - Enero 2025",
-  },
-];
+import { ReporteList } from "@/components/dashboard/shared/reporte-list";
+import { useMyProgressReports } from "@/hooks/useReportes";
+import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
+import type { Reporte } from "@/hooks/useReportes";
 
 export function HRMiProgreso() {
-  const [selectedReporte, setSelectedReporte] = useState<Reporte>(REPORTES[0]);
+  const { reportes, loading, error } = useMyProgressReports();
+  const [selectedReporte, setSelectedReporte] = useState<Reporte | null>(null);
+
+  // Auto-select the first report once data loads
+  useEffect(() => {
+    if (reportes.length > 0 && !selectedReporte) {
+      setSelectedReporte(reportes[0]);
+    }
+  }, [reportes]);
 
   return (
     <div className="p-8">
@@ -33,13 +27,34 @@ export function HRMiProgreso() {
         TU PROGRESO
       </h1>
 
-      <PowerBIPlaceholder powerBiTitle={selectedReporte.powerBiTitle || ""} />
+      <PowerBIPlaceholder powerBiTitle={selectedReporte?.nombre ?? ""} />
 
-      <ReporteList
-        reportes={REPORTES}
-        selectedReporte={selectedReporte}
-        onSelectReporte={setSelectedReporte}
-      />
+      {loading && (
+        <div className="flex items-center gap-3 mt-8 text-muted-foreground">
+          <Loader2 className="animate-spin w-4 h-4" />
+          <span className="text-sm font-sans">Cargando reportes...</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-8 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-sans">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && reportes.length === 0 && (
+        <p className="mt-8 text-sm text-muted-foreground font-sans">
+          Aún no has respondido ninguna encuesta.
+        </p>
+      )}
+
+      {!loading && reportes.length > 0 && (
+        <ReporteList
+          reportes={reportes}
+          selectedReporte={selectedReporte ?? undefined}
+          onSelectReporte={(r) => setSelectedReporte(r)}
+        />
+      )}
     </div>
   );
 }
