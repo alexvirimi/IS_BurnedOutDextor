@@ -25,7 +25,7 @@ import type {
 } from "@/lib/api/interfaces";
 
 // ─── Constante canónica (misma que el backend) ────────────────────────────────
-const STATUS_FINALIZADA = "finalizada";
+const STATUS_cerrada = "cerrada";
 
 /**
  * Devuelve true si la encuesta puede recibir respuestas.
@@ -34,7 +34,7 @@ const STATUS_FINALIZADA = "finalizada";
  */
 function isSurveyOpen(status: string | null | undefined): boolean {
   if (!status) return true;
-  return status.trim().toLowerCase() !== STATUS_FINALIZADA;
+  return status.trim().toLowerCase() !== STATUS_cerrada;
 }
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ export function useEncuestas() {
         "/survey-assignment/my-surveys",
       );
 
-      // ── Filtro canónico: excluir encuestas finalizadas ─────────────────
+      // ── Filtro canónico: excluir encuestas cerradas ─────────────────
       // Se aplica una sola vez aquí. Los tres views que usan este hook
       // reciben únicamente encuestas abiertas, sin necesidad de filtrar
       // en cada componente individualmente.
@@ -120,7 +120,7 @@ export function useEncuestas() {
     // después de cargar la lista.
     if (!isSurveyOpen(encuesta.status)) {
       setQuestionsError(
-        "Esta encuesta ya fue finalizada y no acepta nuevas respuestas.",
+        "Esta encuesta ya fue cerrada y no acepta nuevas respuestas.",
       );
       return;
     }

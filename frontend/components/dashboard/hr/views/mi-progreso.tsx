@@ -1,6 +1,6 @@
 "use client";
 
-import { PowerBIPlaceholder } from "@/components/dashboard/shared/power-bi-placeholder";
+import { BurnoutLineChart } from "@/components/dashboard/shared/burnout-line-chart";
 import { ReporteList } from "@/components/dashboard/shared/reporte-list";
 import { useMyProgressReports } from "@/hooks/useReportes";
 import { useState, useEffect } from "react";
@@ -27,7 +27,7 @@ export function HRMiProgreso() {
         TU PROGRESO
       </h1>
 
-      <PowerBIPlaceholder powerBiTitle={selectedReporte?.nombre ?? ""} />
+      <BurnoutLineChart title={selectedReporte?.nombre} />
 
       {loading && (
         <div className="flex items-center gap-3 mt-8 text-muted-foreground">
