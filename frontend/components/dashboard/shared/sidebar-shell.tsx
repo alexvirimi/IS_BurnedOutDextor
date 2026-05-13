@@ -11,7 +11,7 @@ export function BurnoutRiskCard() {
 
   return (
     <div className="bg-muted rounded-lg p-4">
-      <h3 className="text-primary text-sm font-sans">Riesgo de Burn Out</h3>
+      <h3 className="text-primary text-sm font-sans">Riesgo de Burnout</h3>
       <div className="flex justify-between items-center mt-1">
         <span className="font-heading font-bold text-foreground text-sm">
           {isLoading ? "Cargando..." : label ? label : "Sin datos"}

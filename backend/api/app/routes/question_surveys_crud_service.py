@@ -54,7 +54,7 @@ def delete_question_survey(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregunta no encontrada")
 
 @router.post("/assign", status_code=status.HTTP_200_OK)
-def assign_questions_to_survey(payload: AssignQuestions= Depends(AssignQuestions.as_form), db: Session = Depends(get_db)):
+def assign_questions_to_survey(payload: AssignQuestions, db: Session = Depends(get_db)):
     service = QuestionSurveyService(db)
     try:
         return service.assign_questions(payload)
