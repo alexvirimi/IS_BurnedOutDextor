@@ -9,7 +9,7 @@ from app.servicemodels.workers_service import WorkerService
 from app.schemas.workers_scheme import WorkerResponse, WorkerCreate, WorkerDetailResponse
 from app.deps.auth_deps import get_current_user, require_rrhh
 from app.schemas.auth_scheme import CurrentUserData
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from uuid import UUID
 
 router = APIRouter(prefix="/worker", tags=["Worker"])
@@ -21,12 +21,14 @@ class UpdateWorkerFlagRequest(BaseModel):
 
 @router.get("/", response_model=list[WorkerResponse], status_code=status.HTTP_200_OK)
 def read_workers(db: Session = Depends(get_db)):
+    """Get all workers"""
     service = WorkerService(db)
     return service.get_workers()
 
 
 @router.get("/{worker_id}/details", response_model=WorkerDetailResponse, status_code=status.HTTP_200_OK)
 def read_worker_details(worker_id: UUID, db: Session = Depends(get_db)):
+    """Get worker details by ID"""
     service = WorkerService(db)
     worker = service.get_worker(worker_id)
     if not worker:
@@ -46,10 +48,14 @@ def read_worker_details(worker_id: UUID, db: Session = Depends(get_db)):
 
 @router.get("/{worker_id}", response_model=WorkerResponse, status_code=status.HTTP_200_OK)
 def read_worker_info(worker_id: UUID, db: Session = Depends(get_db)):
+    """Get worker information by ID"""
     service = WorkerService(db)
     worker = service.get_worker(worker_id)
     if not worker:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trabajador no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Trabajador no encontrado"
+        )
     return worker
 
 
@@ -59,8 +65,25 @@ def create_worker(
     current_user: CurrentUserData = Depends(require_rrhh),
     db: Session = Depends(get_db),
 ):
+    """
+    Create a new worker. Only RRHH can create workers.
+    
+    Validations:
+    - gender must be 'M' (Male) or 'F' (Female)
+    """
     service = WorkerService(db)
-    return service.create_worker(payload.model_dump())
+    try:
+        return service.create_worker(payload.model_dump())
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.patch("/{worker_id}/flag", response_model=WorkerResponse, status_code=status.HTTP_200_OK)
@@ -70,6 +93,9 @@ def update_worker_flag(
     current_user: CurrentUserData = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """
+    Update worker flag. Only leaders (rank level 2) can update the flag. RRHH cannot.
+    """
     # Solo líderes (nivel 2) pueden cambiar el flag. RRHH NO puede.
     if current_user.rank_level == 3:
         raise HTTPException(
@@ -85,7 +111,10 @@ def update_worker_flag(
     service = WorkerService(db)
     worker = service.get_worker(worker_id)
     if not worker:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trabajador no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Trabajador no encontrado"
+        )
 
     worker.flag = payload.flag
     db.commit()

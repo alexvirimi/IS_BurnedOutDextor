@@ -6,6 +6,7 @@ from app.servicemodels.company_service import CompanyService
 from app.schemas.company_scheme import CompanyResponse, CompanyCreate
 from app.deps.auth_deps import require_rrhh
 from app.schemas.auth_scheme import CurrentUserData
+from pydantic import ValidationError
 from uuid import UUID
 
 router = APIRouter(prefix="/company", tags=["Company"])
@@ -32,11 +33,21 @@ def read_worker_info(identifier: UUID, db: Session = Depends(get_db)):
     return company
 
 @router.post("/", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
-# Endpoint que crea los detalles de un trabajador. Solo RRHH puede crear.
 def create_worker_info(
     payload: CompanyCreate = Depends(CompanyCreate.as_form),
     current_user: CurrentUserData = Depends(require_rrhh),
     db: Session = Depends(get_db)
 ):
     service = CompanyService(db)
-    return service.create_worker_info(payload.model_dump())
+    try:
+        return service.create_worker_info(payload.model_dump())
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
