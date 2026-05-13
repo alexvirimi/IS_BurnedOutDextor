@@ -10,6 +10,8 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from app.dbmodels import Group, Worker, Area, QuestionSurveys, Surveys
 from datetime import date
+from app.database import SessionLocal
+from app.dbmodels import Result
 
 logger = logging.getLogger(__name__)
 
@@ -67,21 +69,38 @@ def _check_survey_completion(db: Session, worker_id: UUID, survey_id: UUID) -> b
 
 
 async def _trigger_burnout_prediction(
-    db: Session, worker_id: UUID, survey_id: UUID
+    worker_id: UUID, survey_id: UUID
 ) -> bool:
     """
     Llama asincronamente al endpoint de predicción de burnout.
     Captura errores sin bloquear el flujo principal.
     Retorna True si la predicción fue exitosa, False en caso contrario.
     """
+    # Crear una nueva sesión independiente para la tarea en background.
+    db = SessionLocal()
     try:
         # Importar aquí para evitar circular imports
         from app.servicemodels.burnout_service import BurnoutService
 
         logger.info(
             f"Triggering burnout prediction for worker {worker_id}, "
-            f"survey {survey_id}"
+            f"survey {survey_id} (background task)"
         )
+
+        # IDempotency: comprobar a nivel de aplicación si ya existe un resultado
+        existing = (
+            db.query(Result)
+            .filter(Result.id_worker == worker_id, Result.id_survey == survey_id)
+            .order_by(Result.generation_date.desc())
+            .first()
+        )
+
+        if existing:
+            logger.info(
+                f"Skipping prediction: existing Result found for worker {worker_id}, "
+                f"survey {survey_id} (id={existing.id})"
+            )
+            return False
 
         # Llamar al servicio de predicción (es async)
         result = await BurnoutService.predict_worker_burnout(
@@ -100,7 +119,6 @@ async def _trigger_burnout_prediction(
             f"HTTP Error in burnout prediction for worker {worker_id}: "
             f"{he.status_code} - {he.detail}"
         )
-        # No relanzar - permitir que la respuesta se guarde de todos modos
         return False
 
     except Exception as e:
@@ -108,8 +126,10 @@ async def _trigger_burnout_prediction(
             f"Unexpected error in burnout prediction for worker {worker_id}: "
             f"{str(e)}"
         )
-        # No relanzar - permitir que la respuesta se guarde de todos modos
         return False
+
+    finally:
+        db.close()
 
 
 class AnswerService:
@@ -235,7 +255,7 @@ class AnswerService:
             try:
                 # Crear una tarea asincrónica para ejecutar en background
                 asyncio.create_task(
-                    _trigger_burnout_prediction(self.db, worker_id, survey_id)
+                    _trigger_burnout_prediction(worker_id, survey_id)
                 )
                 logger.info(
                     f"Burnout prediction task created for worker {worker_id}"
@@ -323,7 +343,7 @@ class AnswerService:
             try:
                 # Crear una tarea asincrónica para ejecutar en background
                 asyncio.create_task(
-                    _trigger_burnout_prediction(self.db, worker_id, survey_id)
+                    _trigger_burnout_prediction(worker_id, survey_id)
                 )
                 logger.info(
                     f"Burnout prediction task created for worker {worker_id}"

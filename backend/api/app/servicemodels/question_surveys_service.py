@@ -9,9 +9,9 @@ from uuid import UUID as UUIDType
 
 # Business-required psicometric variables
 REQUIRED_PSICO_IDS = {
-    UUIDType("7bfe6646-c400-4913-93ec-bcff12c67987"): "despersonalización",
-    UUIDType("9b76e819-3e37-4d52-ad7d-00bbecdab3d0"): "eficacia",
-    UUIDType("c8dfdbb2-6761-4bb7-ab29-7b2c615e11a5"): "agotamiento",
+    UUIDType("7bfe6646-c400-4913-93ec-bcff12c67987"): "Despersonalización",
+    UUIDType("9b76e819-3e37-4d52-ad7d-00bbecdab3d0"): "Eficacia",
+    UUIDType("c8dfdbb2-6761-4bb7-ab29-7b2c615e11a5"): "Agotamiento",
 }
 
 

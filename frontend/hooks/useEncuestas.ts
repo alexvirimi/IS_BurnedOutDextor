@@ -223,8 +223,6 @@ export function useEncuestas() {
       try {
         await apiPostJson("/answers/bulk", payload);
 
-        setSubmitState("success");
-
         // Mark the survey as responded in the local list so the button
         // is disabled without requiring a full list refetch
         setEncuestas((prev) =>
@@ -233,7 +231,26 @@ export function useEncuestas() {
           ),
         );
 
-        setShowCompletado(true);
+        // Check once if the backend already has a Result for this survey.
+        try {
+          const results = await apiFetch<any[]>("/results");
+          const found = results.find((r) => r.id_survey === encuesta.id);
+          if (found) {
+            setSubmitState("success");
+            setShowCompletado(true);
+          } else {
+            // Prediction is likely enqueued — inform the user it's processing
+            setSubmitState("success");
+            setShowCompletado(true);
+            setSubmitError(
+              "Resultados en procesamiento. Podrían tardar unos segundos.",
+            );
+          }
+        } catch (e) {
+          // If the status check fails, still consider answers submitted
+          setSubmitState("success");
+          setShowCompletado(true);
+        }
       } catch (err) {
         setSubmitState("error");
         setSubmitError(
