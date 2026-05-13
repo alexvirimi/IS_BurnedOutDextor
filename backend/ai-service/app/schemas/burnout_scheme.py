@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, model_validator
+from typing import List
 from uuid import UUID
 
 
@@ -40,10 +41,11 @@ class WorkerInput(BaseModel):
         return self
 
 
-class BurnoutPredictionResult(BaseModel):
+class BurnoutPredictionResponse(BaseModel):
     worker_id: UUID
     burnout_class: str  # "Muy Bajo" | "Bajo" | "Medio" | "Moderado" | "Alto"
     # Probabilidad de la clase predicha (0.0 - 1.0)
-    burnout_score: float = Field(..., ge=0.0, le=1.0)
+    burnout_confidence: float = Field(..., ge=0.0, le=1.0)
     # Mapa completo: {"Alto": 0.85, "Medio": 0.10, ...}
     probabilities: dict[str, float]
+    reasons: List[str]
