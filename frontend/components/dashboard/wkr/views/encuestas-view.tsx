@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
 import { BUTTONS_COLORS } from "@/lib/styles/buttons-colors";
 import { useEncuestas } from "@/hooks/useEncuestas";
+import { CompletionModal } from "../../shared/completion-modal";
 
 const C = BUTTONS_COLORS.worker;
 
@@ -29,9 +30,9 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
     handleNext,
     handlePrev,
     handleClose,
-    // submission
     submitError,
     isSubmitting,
+    predictionStatus,
   } = useEncuestas();
 
   useEffect(() => {
@@ -221,31 +222,11 @@ export function WKREncuestasView({ userName }: WKREncuestasViewProps) {
 
         {/* ── Completion modal ─────────────────────────────────────────── */}
         {showCompletado && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-background rounded-xl p-8 w-full max-w-md text-center">
-              <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${C.button}`}
-              >
-                <Check size={32} />
-              </div>
-              <h2
-                className="text-2xl font-bold text-foreground mb-4"
-                style={{ fontFamily: "var(--font-heading)" }}
-              >
-                ENCUESTA COMPLETADA
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                Gracias por tomarte el tiempo de responder. Tus respuestas nos
-                ayudan a mejorar tu experiencia laboral.
-              </p>
-              <button
-                onClick={handleClose}
-                className={`px-8 py-3 rounded-lg transition-colors ${C.button}`}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
+          <CompletionModal
+            predictionStatus={predictionStatus}
+            onClose={handleClose}
+            colors={C}
+          />
         )}
       </div>
     </div>

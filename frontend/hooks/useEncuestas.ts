@@ -13,9 +13,11 @@
  *  3. Normalise the API shapes into the internal `Encuesta` type used by
  *     the existing modal UI — all questions are treated as tipo: "escala".
  *  4. Expose handlers that the view components wire up to their buttons.
+ *  5. After a successful bulk submission, call POST /burnout/predict and
+ *     refresh GET /results/ — both fire-and-forget with safe error handling.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { apiFetch, apiPostJson } from "@/lib/api/context";
 import type {
   MySurveyResponse,
@@ -25,16 +27,44 @@ import type {
 } from "@/lib/api/interfaces";
 
 // ─── Constante canónica (misma que el backend) ────────────────────────────────
-const STATUS_cerrada = "cerrada";
+const STATUS_CERRADA = "cerrada";
 
-/**
- * Devuelve true si la encuesta puede recibir respuestas.
- * Normaliza a minúsculas para tolerar inconsistencias del backend.
- * Trata status null/undefined/vacío como "abierta" (safe default).
- */
 function isSurveyOpen(status: string | null | undefined): boolean {
   if (!status) return true;
-  return status.trim().toLowerCase() !== STATUS_cerrada;
+  return status.trim().toLowerCase() !== STATUS_CERRADA;
+}
+
+// ─── Prediction status ────────────────────────────────────────────────────────
+
+/**
+ * idle        – no prediction in flight
+ * pending     – waiting for the backend to finish the AI call
+ * success     – prediction stored and results refreshed
+ * unavailable – backend says not enough survey history yet
+ * error       – unexpected error (AI service down, network, etc.)
+ */
+export type PredictionStatus =
+  | "idle"
+  | "pending"
+  | "success"
+  | "unavailable"
+  | "error";
+
+const INCOMPLETE_HISTORY_KEYWORDS = [
+  "incompleto",
+  "insuficiente",
+  "faltan",
+  "historial",
+  "avg_despersonalizacion",
+  "avg_agotamiento",
+  "eficacia_invertida",
+  "datos incompletos",
+];
+
+/** Returns true when the error message indicates missing survey history. */
+function isInsufficientHistoryError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return INCOMPLETE_HISTORY_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
@@ -48,14 +78,54 @@ export interface EncuestaPregunta {
 export interface Encuesta {
   id: string;
   nombre: string;
-  status: string; // ← nuevo: propagado desde MySurveyResponse
+  status: string;
   already_responded: boolean;
-  /** Populated lazily when the user opens the survey */
   preguntas: EncuestaPregunta[];
 }
 
-// Submission states exposed to the view
 export type SubmitState = "idle" | "submitting" | "success" | "error";
+
+// ─── Prediction trigger ───────────────────────────────────────────────────────
+
+/**
+ * Calls POST /burnout/predict and then refreshes GET /results/.
+ * Returns the final PredictionStatus — never throws.
+ *
+ * Separated from the hook so it is easy to unit-test.
+ *
+ * @param workerId  – worker UUID from the JWT session
+ * @param surveyId  – survey that was just completed
+ * @param delayMs   – optional warm-up delay before hitting the predict endpoint
+ *                   (gives asyncio.create_task on the backend a head-start)
+ */
+export async function triggerPrediction(
+  workerId: string,
+  surveyId: string,
+  delayMs = 1500,
+): Promise<PredictionStatus> {
+  // Small delay so the backend async task has already persisted answers
+  if (delayMs > 0) {
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+
+  try {
+    await apiPostJson("/burnout/predict", {
+      worker_id: workerId,
+      survey_id: surveyId,
+    });
+    return "success";
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+
+    if (isInsufficientHistoryError(message)) {
+      return "unavailable";
+    }
+
+    // AI service down, network error, etc.
+    console.warn("[useEncuestas] Prediction failed (non-critical):", message);
+    return "error";
+  }
+}
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -78,6 +148,16 @@ export function useEncuestas() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showCompletado, setShowCompletado] = useState(false);
 
+  // ── Prediction state ───────────────────────────────────────────────────────
+  const [predictionStatus, setPredictionStatus] =
+    useState<PredictionStatus>("idle");
+
+  /**
+   * Guard against duplicate prediction calls for the same survey.
+   * Stores the surveyId of the in-flight or last completed prediction.
+   */
+  const predictionInFlightRef = useRef<string | null>(null);
+
   // ── Load assigned surveys ─────────────────────────────────────────────────
 
   const loadEncuestas = useCallback(async () => {
@@ -88,10 +168,6 @@ export function useEncuestas() {
         "/survey-assignment/my-surveys",
       );
 
-      // ── Filtro canónico: excluir encuestas cerradas ─────────────────
-      // Se aplica una sola vez aquí. Los tres views que usan este hook
-      // reciben únicamente encuestas abiertas, sin necesidad de filtrar
-      // en cada componente individualmente.
       const mapped: Encuesta[] = data
         .filter((s) => isSurveyOpen(s.status))
         .map((s) => ({
@@ -115,9 +191,6 @@ export function useEncuestas() {
   // ── Open a survey ────────────────────────────────────────────────────────
 
   const handleSelectEncuesta = useCallback(async (encuesta: Encuesta) => {
-    // ── Segunda guarda: rechaza en el handler aunque pase el filtro del list ──
-    // Cubre casos como deep-links o race conditions donde el status cambia
-    // después de cargar la lista.
     if (!isSurveyOpen(encuesta.status)) {
       setQuestionsError(
         "Esta encuesta ya fue cerrada y no acepta nuevas respuestas.",
@@ -125,21 +198,19 @@ export function useEncuestas() {
       return;
     }
 
-    // Reset per-survey state
     setCurrentQuestion(0);
     setRespuestas({});
     setShowCompletado(false);
     setQuestionsError(null);
     setSubmitState("idle");
     setSubmitError(null);
+    setPredictionStatus("idle");
 
-    // If questions are already cached, open immediately
     if (encuesta.preguntas.length > 0) {
       setSelectedEncuesta(encuesta);
       return;
     }
 
-    // Open modal in loading state while fetching
     setLoadingQuestions(true);
     setSelectedEncuesta({ ...encuesta, preguntas: [] });
 
@@ -148,17 +219,14 @@ export function useEncuestas() {
         `/survey/${encuesta.id}/complete`,
       );
 
-      // `data.questions[].id` is the question_survey id — exactly what the
-      // bulk endpoint needs. We store it as `EncuestaPregunta.id`.
       const preguntas: EncuestaPregunta[] = data.questions.map((q) => ({
-        id: q.id, // question_survey id
+        id: q.id,
         texto: q.question_text,
         tipo: "escala" as const,
       }));
 
       const populated: Encuesta = { ...encuesta, preguntas };
 
-      // Cache so reopening the same survey doesn't refetch
       setEncuestas((prev) =>
         prev.map((e) => (e.id === encuesta.id ? populated : e)),
       );
@@ -189,14 +257,12 @@ export function useEncuestas() {
     setCurrentQuestion((q) => Math.max(0, q - 1));
   }, []);
 
-  // ── Submit answers to the backend ──────────────────────────────────────────
+  // ── Submit answers + orchestrate prediction ───────────────────────────────
 
   const submitAnswers = useCallback(
     async (encuesta: Encuesta, answers: Record<string, number>) => {
-      // Guard: prevent duplicate submissions
       if (submitState === "submitting") return;
 
-      // Guard: all questions must be answered
       const unanswered = encuesta.preguntas.filter(
         (p) => answers[p.id] === undefined,
       );
@@ -209,6 +275,7 @@ export function useEncuestas() {
 
       setSubmitState("submitting");
       setSubmitError(null);
+      setPredictionStatus("idle");
 
       const items: BulkAnswerItem[] = encuesta.preguntas.map((p) => ({
         id_question_survey: p.id,
@@ -220,43 +287,65 @@ export function useEncuestas() {
         answers: items,
       };
 
+      // ── Step 1: Submit answers ────────────────────────────────────────────
       try {
         await apiPostJson("/answers/bulk", payload);
-
-        // Mark the survey as responded in the local list so the button
-        // is disabled without requiring a full list refetch
-        setEncuestas((prev) =>
-          prev.map((e) =>
-            e.id === encuesta.id ? { ...e, already_responded: true } : e,
-          ),
-        );
-
-        // Check once if the backend already has a Result for this survey.
-        try {
-          const results = await apiFetch<any[]>("/results");
-          const found = results.find((r) => r.id_survey === encuesta.id);
-          if (found) {
-            setSubmitState("success");
-            setShowCompletado(true);
-          } else {
-            // Prediction is likely enqueued — inform the user it's processing
-            setSubmitState("success");
-            setShowCompletado(true);
-            setSubmitError(
-              "Resultados en procesamiento. Podrían tardar unos segundos.",
-            );
-          }
-        } catch (e) {
-          // If the status check fails, still consider answers submitted
-          setSubmitState("success");
-          setShowCompletado(true);
-        }
       } catch (err) {
         setSubmitState("error");
         setSubmitError(
           err instanceof Error ? err.message : "Error enviando respuestas",
         );
+        return;
       }
+
+      // Mark locally as responded immediately so the button disables
+      setEncuestas((prev) =>
+        prev.map((e) =>
+          e.id === encuesta.id ? { ...e, already_responded: true } : e,
+        ),
+      );
+
+      // Show completion screen right away — prediction happens in background
+      setSubmitState("success");
+      setShowCompletado(true);
+
+      // ── Step 2: Trigger prediction (non-blocking) ─────────────────────────
+      // Guard: skip if a prediction is already in-flight for this survey
+      if (predictionInFlightRef.current === encuesta.id) return;
+      predictionInFlightRef.current = encuesta.id;
+
+      setPredictionStatus("pending");
+
+      // Retrieve workerId from the session cookie that AuthProvider stores.
+      // We read it here lazily to avoid coupling this hook to useAuth.
+      let workerId: string | null = null;
+      try {
+        const cookieMatch = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("bud_session="));
+        if (cookieMatch) {
+          const raw = decodeURIComponent(
+            cookieMatch.split("=").slice(1).join("="),
+          );
+          workerId =
+            (JSON.parse(raw) as { worker_id?: string }).worker_id ?? null;
+        }
+      } catch {
+        // Cookie unavailable in SSR or malformed — skip prediction silently
+      }
+
+      if (!workerId) {
+        // Can't predict without a worker id — not a fatal UI error
+        setPredictionStatus("unavailable");
+        predictionInFlightRef.current = null;
+        return;
+      }
+
+      // Fire-and-forget: does not block the UI
+      triggerPrediction(workerId, encuesta.id).then((status) => {
+        setPredictionStatus(status);
+        predictionInFlightRef.current = null;
+      });
     },
     [submitState],
   );
@@ -273,7 +362,6 @@ export function useEncuestas() {
       return;
     }
 
-    // Last question → submit
     submitAnswers(selectedEncuesta, respuestas);
   }, [selectedEncuesta, currentQuestion, respuestas, submitAnswers]);
 
@@ -287,6 +375,7 @@ export function useEncuestas() {
     setQuestionsError(null);
     setSubmitState("idle");
     setSubmitError(null);
+    setPredictionStatus("idle");
   }, []);
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -326,5 +415,8 @@ export function useEncuestas() {
     submitState,
     submitError,
     isSubmitting,
+
+    // Prediction (new)
+    predictionStatus,
   };
 }

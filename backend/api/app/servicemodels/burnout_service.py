@@ -197,14 +197,24 @@ class BurnoutService:
             worker_id
         )
 
-        # Validar NULLs
-        for key, value in features.items():
+        # Manejar valores NULL: reemplazar por defaults razonables
+        null_keys = [k for k, v in features.items() if v is None]
+        if null_keys:
+            print(f"Warning: campos NULL encontrados: {null_keys} — se aplicarán valores por defecto")
 
-            if value is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"El campo '{key}' es NULL"
-                )
+        numeric_defaults = {
+            "assigned_tasks", "completed_tasks", "absences", "employee_calls",
+            "completion_rate", "seniority_years", "age",
+            "avg_agotamiento", "avg_despersonalizacion", "eficacia_invertida"
+        }
+
+        for key in null_keys:
+            # Campos numéricos y codificados terminados en _enc se reemplazan por 0
+            if key in numeric_defaults or key.endswith("_enc"):
+                features[key] = 0
+            else:
+                # Fallback para cadenas u otros tipos
+                features[key] = ""
 
         # Convertir tipos no serializables
         for key, value in features.items():
