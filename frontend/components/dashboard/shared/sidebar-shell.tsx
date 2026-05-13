@@ -4,24 +4,23 @@ import { useRouter } from "next/navigation";
 import { BudLogo } from "@/components/icons";
 import { useAuth } from "@/lib/auth/context";
 import { authApi } from "@/lib/auth/api";
+import { useBurnoutRisk } from "@/hooks/useBurnoutRisk";
 
-interface BurnoutRiskCardProps {
-  label?: string;
-  percentage?: number;
-}
+export function BurnoutRiskCard() {
+  const { label, percentage, isLoading } = useBurnoutRisk();
 
-export function BurnoutRiskCard({
-  label = "Poco Probable",
-  percentage = 15,
-}: BurnoutRiskCardProps) {
   return (
     <div className="bg-muted rounded-lg p-4">
       <h3 className="font-heading font-bold text-foreground text-sm">
         Riesgo de Burn Out
       </h3>
       <div className="flex justify-between items-center mt-1">
-        <span className="text-primary text-sm font-sans">{label}</span>
-        <span className="text-foreground text-sm font-sans">{percentage}%</span>
+        <span className="text-primary text-sm font-sans">
+          {isLoading ? "Cargando..." : label ? label : "Sin datos"}
+        </span>
+        <span className="text-foreground text-sm font-sans">
+          {percentage ? percentage * 100 : 0}%
+        </span>
       </div>
     </div>
   );

@@ -29,17 +29,17 @@ import { apiFetch } from "@/lib/api/context";
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface ProgressPoint {
-  fecha: string;       // ISO date string "2025-06-01"
-  clase: string;       // "Bajo", "Moderado", etc.
-  valor: number;       // 1-5
-  confianza: number;   // 0.0-1.0
+  fecha: string; // ISO date string "2025-06-01"
+  clase: string; // "Bajo", "Moderado", etc.
+  valor: number; // 1-5
+  confianza: number; // 0.0-1.0
   encuesta_id: string;
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 // Mapeo inverso para el eje Y del tooltip
-const SCORE_TO_LABEL: Record<number, string> = {
+export const SCORE_TO_LABEL: Record<number, string> = {
   1: "Muy Bajo",
   2: "Bajo",
   3: "Medio",
@@ -49,11 +49,11 @@ const SCORE_TO_LABEL: Record<number, string> = {
 
 // Color del punto/línea según el riesgo
 const SCORE_TO_COLOR: Record<number, string> = {
-  1: "#22c55e",   // green-500
-  2: "#86efac",   // green-300
-  3: "#facc15",   // yellow-400
-  4: "#f97316",   // orange-500
-  5: "#ef4444",   // red-500
+  1: "#22c55e", // green-500
+  2: "#86efac", // green-300
+  3: "#facc15", // yellow-400
+  4: "#f97316", // orange-500
+  5: "#ef4444", // red-500
 };
 
 // Colores del tema Inbudex
@@ -79,7 +79,7 @@ function CustomTooltip({
   // Formatear fecha a "DD MMM YYYY" en español
   const dateStr = new Date(point.fecha + "T00:00:00").toLocaleDateString(
     "es-CO",
-    { day: "2-digit", month: "short", year: "numeric" }
+    { day: "2-digit", month: "short", year: "numeric" },
   );
 
   return (
@@ -138,7 +138,14 @@ function CustomDot({
   const color = SCORE_TO_COLOR[payload.valor] ?? PRIMARY;
   return (
     <g>
-      <circle cx={cx} cy={cy} r={6} fill={color} stroke="white" strokeWidth={2} />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={6}
+        fill={color}
+        stroke="white"
+        strokeWidth={2}
+      />
     </g>
   );
 }
@@ -172,7 +179,7 @@ export function BurnoutLineChart({
       } catch (err) {
         if (!cancelled)
           setError(
-            err instanceof Error ? err.message : "Error cargando progreso"
+            err instanceof Error ? err.message : "Error cargando progreso",
           );
       } finally {
         if (!cancelled) setLoading(false);
@@ -352,7 +359,7 @@ export function BurnoutLineChart({
           })}{" "}
           →{" "}
           {new Date(
-            data[data.length - 1].fecha + "T00:00:00"
+            data[data.length - 1].fecha + "T00:00:00",
           ).toLocaleDateString("es-CO", {
             day: "numeric",
             month: "long",
