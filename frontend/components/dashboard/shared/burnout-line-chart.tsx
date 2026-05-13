@@ -3,13 +3,31 @@
 /**
  * BurnoutLineChart
  * ─────────────────
- * Gráfica de líneas del historial de riesgo de burnout del usuario.
- * Consume GET /results/my-progress
+ * Supports two rendering modes:
  *
- * Las clases categóricas se convierten a valores numéricos (1-5) en el backend:
- *   1 = Muy Bajo  2 = Bajo  3 = Medio  4 = Moderado  5 = Alto
+ * 1. SELF mode (default, no props needed)
+ *    Fetches GET /results/my-progress and renders the logged-in user's history.
  *
- * Uso: reemplaza <PowerBIPlaceholder /> en las vistas de progreso personal.
+ * 2. EXTERNAL mode (pass `dataSource`)
+ *    Renders whatever ProgressPoint[] is provided — caller is responsible for
+ *    fetching the right endpoint (individual worker, group avg, area avg).
+ *    The chart itself is completely data-agnostic.
+ *
+ * Optional `mode` label ("individual" | "group" | "area") tweaks tooltip copy.
+ * Optional `title` shown above the chart.
+ *
+ * Usage:
+ *   // Self (my-progress):
+ *   <BurnoutLineChart />
+ *
+ *   // Individual worker (by HR/PM):
+ *   <BurnoutLineChart dataSource={points} mode="individual" title="Ana Meza" />
+ *
+ *   // Group average:
+ *   <BurnoutLineChart dataSource={points} mode="group" title="REPORTE DE …" />
+ *
+ *   // Area average:
+ *   <BurnoutLineChart dataSource={points} mode="area" title="REPORTE DE …" />
  */
 
 import { useEffect, useState } from "react";
@@ -26,19 +44,44 @@ import {
 import { Loader2, TrendingUp } from "lucide-react";
 import { apiFetch } from "@/lib/api/context";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface ProgressPoint {
-  fecha: string; // ISO date string "2025-06-01"
+export interface ProgressPoint {
+  fecha: string; // ISO date "2025-06-01"
   clase: string; // "Bajo", "Moderado", etc.
-  valor: number; // 1-5
-  confianza: number; // 0.0-1.0
+  valor: number; // 1–5 (may be fractional for aggregated averages)
+  confianza: number; // 0.0–1.0
   encuesta_id: string;
+  /** Only present in group/area aggregated points */
+  workers?: number;
 }
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
+export type ChartMode = "self" | "individual" | "group" | "area";
 
-// Mapeo inverso para el eje Y del tooltip
+export interface BurnoutLineChartProps {
+  /**
+   * When provided, the chart renders this data directly without fetching.
+   * When omitted, the chart fetches GET /results/my-progress (self mode).
+   */
+  dataSource?: ProgressPoint[] | null;
+  /**
+   * Semantic mode — drives tooltip copy and legend label.
+   * Defaults to "self" when dataSource is omitted, "individual" otherwise.
+   */
+  mode?: ChartMode;
+  /** Short title shown above the chart */
+  title?: string;
+  /** Chart area height in px (default 280) */
+  height?: number;
+  /**
+   * When true the chart shows a subtle loading skeleton instead of data.
+   * Useful when the parent is still fetching but wants to pre-render the card.
+   */
+  loading?: boolean;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 export const SCORE_TO_LABEL: Record<number, string> = {
   1: "Muy Bajo",
   2: "Bajo",
@@ -47,51 +90,58 @@ export const SCORE_TO_LABEL: Record<number, string> = {
   5: "Alto",
 };
 
-// Color del punto/línea según el riesgo
 const SCORE_TO_COLOR: Record<number, string> = {
-  1: "#22c55e", // green-500
-  2: "#86efac", // green-300
-  3: "#facc15", // yellow-400
-  4: "#f97316", // orange-500
-  5: "#ef4444", // red-500
+  1: "#22c55e",
+  2: "#86efac",
+  3: "#facc15",
+  4: "#f97316",
+  5: "#ef4444",
 };
 
-// Colores del tema Inbudex
 const PRIMARY = "#2694D2";
 const FOREGROUND = "#3D4676";
 const MUTED = "#9ca3af";
 
-// ─── Tooltip personalizado ────────────────────────────────────────────────────
+// Maps a (possibly fractional) score to the nearest colour bucket
+function scoreColor(valor: number): string {
+  const rounded = Math.round(valor);
+  return SCORE_TO_COLOR[Math.max(1, Math.min(5, rounded))] ?? PRIMARY;
+}
+
+// ─── Tooltip ──────────────────────────────────────────────────────────────────
 
 function CustomTooltip({
   active,
   payload,
+  mode,
 }: {
   active?: boolean;
   payload?: { payload: ProgressPoint }[];
+  mode: ChartMode;
 }) {
   if (!active || !payload?.length) return null;
 
   const point = payload[0].payload;
-  const color = SCORE_TO_COLOR[point.valor] ?? PRIMARY;
-  const label = SCORE_TO_LABEL[point.valor] ?? point.clase;
+  const color = scoreColor(point.valor);
+  const label = SCORE_TO_LABEL[Math.round(point.valor)] ?? point.clase;
 
-  // Formatear fecha a "DD MMM YYYY" en español
   const dateStr = new Date(point.fecha + "T00:00:00").toLocaleDateString(
     "es-CO",
     { day: "2-digit", month: "short", year: "numeric" },
   );
 
+  const isAggregated = mode === "group" || mode === "area";
+
   return (
     <div
       style={{
         background: "white",
-        border: `1px solid #E5E5E5`,
+        border: "1px solid #E5E5E5",
         borderRadius: 8,
         padding: "10px 14px",
         boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
         fontFamily: "var(--font-montserrat, sans-serif)",
-        minWidth: 160,
+        minWidth: 170,
       }}
     >
       <p style={{ fontSize: 11, color: MUTED, marginBottom: 4 }}>{dateStr}</p>
@@ -106,24 +156,30 @@ function CustomTooltip({
             flexShrink: 0,
           }}
         />
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: FOREGROUND,
-          }}
-        >
-          {label}
+        <span style={{ fontSize: 13, fontWeight: 600, color: FOREGROUND }}>
+          {isAggregated ? `Promedio: ${label}` : label}
         </span>
       </div>
-      <p style={{ fontSize: 11, color: MUTED, marginTop: 4 }}>
-        Confianza: {Math.round(point.confianza * 100)}%
+      {isAggregated && typeof point.valor === "number" && (
+        <p style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>
+          Score: {point.valor.toFixed(2)} / 5
+        </p>
+      )}
+      <p style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>
+        {isAggregated
+          ? `Confianza prom.: ${Math.round(point.confianza * 100)}%`
+          : `Confianza: ${Math.round(point.confianza * 100)}%`}
       </p>
+      {isAggregated && point.workers != null && (
+        <p style={{ fontSize: 11, color: MUTED, marginTop: 2 }}>
+          Trabajadores: {point.workers}
+        </p>
+      )}
     </div>
   );
 }
 
-// ─── Punto personalizado (coloreado por nivel) ────────────────────────────────
+// ─── Custom dot ───────────────────────────────────────────────────────────────
 
 function CustomDot({
   cx,
@@ -135,7 +191,7 @@ function CustomDot({
   payload?: ProgressPoint;
 }) {
   if (cx === undefined || cy === undefined || !payload) return null;
-  const color = SCORE_TO_COLOR[payload.valor] ?? PRIMARY;
+  const color = scoreColor(payload.valor);
   return (
     <g>
       <circle
@@ -150,50 +206,60 @@ function CustomDot({
   );
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
-
-interface BurnoutLineChartProps {
-  /** Título que se muestra sobre la gráfica */
-  title?: string;
-  /** Altura del área de la gráfica en px */
-  height?: number;
-}
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function BurnoutLineChart({
+  dataSource,
+  mode,
   title,
   height = 280,
+  loading: externalLoading = false,
 }: BurnoutLineChartProps) {
-  const [data, setData] = useState<ProgressPoint[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Determine effective mode
+  const effectiveMode: ChartMode =
+    mode ?? (dataSource === undefined ? "self" : "individual");
+
+  // Internal state — only used in self mode
+  const [selfData, setSelfData] = useState<ProgressPoint[]>([]);
+  const [selfLoading, setSelfLoading] = useState(effectiveMode === "self");
+  const [selfError, setSelfError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    // Only self-fetch when no external dataSource was provided
+    if (effectiveMode !== "self") return;
 
+    let cancelled = false;
     async function load() {
-      setLoading(true);
-      setError(null);
+      setSelfLoading(true);
+      setSelfError(null);
       try {
         const points = await apiFetch<ProgressPoint[]>("/results/my-progress");
-        if (!cancelled) setData(points);
+        if (!cancelled) setSelfData(points);
       } catch (err) {
         if (!cancelled)
-          setError(
+          setSelfError(
             err instanceof Error ? err.message : "Error cargando progreso",
           );
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setSelfLoading(false);
       }
     }
-
     load();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [effectiveMode]);
 
-  // ── Estado: cargando ──────────────────────────────────────────────────
-  if (loading) {
+  // Resolve which data and loading/error states to display
+  const data: ProgressPoint[] =
+    effectiveMode === "self" ? selfData : (dataSource ?? []);
+  const isLoading =
+    externalLoading || (effectiveMode === "self" && selfLoading);
+  const error = effectiveMode === "self" ? selfError : null;
+
+  // ── Empty/loading/error states ──────────────────────────────────────────
+
+  if (isLoading) {
     return (
       <div
         className="mt-6 bg-muted rounded-lg flex items-center justify-center"
@@ -207,7 +273,6 @@ export function BurnoutLineChart({
     );
   }
 
-  // ── Estado: error ─────────────────────────────────────────────────────
   if (error) {
     return (
       <div
@@ -221,7 +286,21 @@ export function BurnoutLineChart({
     );
   }
 
-  // ── Estado: sin datos ─────────────────────────────────────────────────
+  // dataSource explicitly null means "not selected yet"
+  if (dataSource === null) {
+    return (
+      <div
+        className="mt-6 bg-muted rounded-lg flex flex-col items-center justify-center gap-3"
+        style={{ height }}
+      >
+        <TrendingUp className="w-8 h-8 text-muted-foreground opacity-40" />
+        <p className="text-sm text-muted-foreground font-sans">
+          Selecciona un reporte para ver el gráfico.
+        </p>
+      </div>
+    );
+  }
+
   if (data.length === 0) {
     return (
       <div
@@ -230,21 +309,21 @@ export function BurnoutLineChart({
       >
         <TrendingUp className="w-8 h-8 text-muted-foreground opacity-40" />
         <p className="text-sm text-muted-foreground font-sans">
-          Aún no hay resultados para mostrar.
-        </p>
-        <p className="text-xs text-muted-foreground font-sans opacity-70">
-          Completa una encuesta para ver tu progreso aquí.
+          {effectiveMode === "self"
+            ? "Completa una encuesta para ver tu progreso aquí."
+            : "No hay datos disponibles para este reporte."}
         </p>
       </div>
     );
   }
 
-  // Formatear etiquetas del eje X: "Jun 25"
   const formatXTick = (dateStr: string) =>
     new Date(dateStr + "T00:00:00").toLocaleDateString("es-CO", {
       month: "short",
       day: "numeric",
     });
+
+  const isAggregated = effectiveMode === "group" || effectiveMode === "area";
 
   return (
     <div className="mt-6 bg-background rounded-lg border border-border p-4">
@@ -252,7 +331,9 @@ export function BurnoutLineChart({
       <div className="flex items-center justify-between mb-4 px-2">
         <div>
           <p className="text-xs text-muted-foreground font-sans uppercase tracking-wide">
-            Historial de riesgo
+            {isAggregated
+              ? "Promedio de riesgo del grupo"
+              : "Historial de riesgo"}
           </p>
           {title && (
             <p
@@ -264,7 +345,7 @@ export function BurnoutLineChart({
           )}
         </div>
 
-        {/* Leyenda de colores */}
+        {/* Colour legend */}
         <div className="hidden sm:flex items-center gap-3 flex-wrap justify-end">
           {Object.entries(SCORE_TO_LABEL)
             .sort((a, b) => Number(a[0]) - Number(b[0]))
@@ -287,7 +368,7 @@ export function BurnoutLineChart({
         </div>
       </div>
 
-      {/* Gráfica */}
+      {/* Chart */}
       <ResponsiveContainer width="100%" height={height}>
         <LineChart
           data={data}
@@ -298,7 +379,6 @@ export function BurnoutLineChart({
             stroke="#E5E5E5"
             vertical={false}
           />
-
           <XAxis
             dataKey="fecha"
             tickFormatter={formatXTick}
@@ -307,7 +387,6 @@ export function BurnoutLineChart({
             tickLine={false}
             dy={8}
           />
-
           <YAxis
             domain={[0.5, 5.5]}
             ticks={[1, 2, 3, 4, 5]}
@@ -319,8 +398,6 @@ export function BurnoutLineChart({
             tickLine={false}
             width={52}
           />
-
-          {/* Línea de referencia en "Moderado" como zona de alerta */}
           <ReferenceLine
             y={4}
             stroke="#f97316"
@@ -334,9 +411,7 @@ export function BurnoutLineChart({
               fontFamily: "sans-serif",
             }}
           />
-
-          <Tooltip content={<CustomTooltip />} />
-
+          <Tooltip content={<CustomTooltip mode={effectiveMode} />} />
           <Line
             type="monotone"
             dataKey="valor"
@@ -349,7 +424,7 @@ export function BurnoutLineChart({
         </LineChart>
       </ResponsiveContainer>
 
-      {/* Footer: rango de fechas */}
+      {/* Date range footer */}
       {data.length >= 2 && (
         <p className="text-xs text-muted-foreground font-sans text-center mt-3 opacity-70">
           {new Date(data[0].fecha + "T00:00:00").toLocaleDateString("es-CO", {

@@ -1,6 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+/**
+ * HRHistoricos — UPDATED
+ * ───────────────────────
+ * Key changes:
+ *   1. `useBurnoutChart` replaces the placeholder chart.
+ *   2. Scope is derived from the current `type` + selected entity id.
+ *   3. Clicking a Reporte in <ReporteList> still works — it sets
+ *      `selectedReporte` which is used for the chart title.
+ *      The chart data itself comes from the scope (area / group / worker),
+ *      not from the individual report — matching the spec:
+ *      "display the aggregated mean of all workers in that context".
+ *   4. No visual / layout changes.
+ */
+
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { BurnoutLineChart } from "@/components/dashboard/shared/burnout-line-chart";
 import { ReporteList } from "@/components/dashboard/shared/reporte-list";
@@ -9,6 +23,11 @@ import {
   type HistoricoScope,
   type Reporte,
 } from "@/hooks/useReportes";
+import {
+  useBurnoutChart,
+  type ChartScope,
+  scopeToMode,
+} from "@/hooks/useBurnoutChart";
 import { apiFetch } from "@/lib/api/context";
 import type { Area, Group, Worker } from "@/lib/api/interfaces";
 
@@ -25,17 +44,18 @@ interface HRHistoricosProps {
 }
 
 export function HRHistoricos({ type }: HRHistoricosProps) {
-  // ── Reference data for the scope selector ──────────────────────────────
+  // ── Reference data ────────────────────────────────────────────────────────
   const [areas, setAreas] = useState<Area[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [refLoading, setRefLoading] = useState(true);
 
-  // ── Active scope and selected report ──────────────────────────────────
+  // ── Scope state ───────────────────────────────────────────────────────────
   const [scope, setScope] = useState<HistoricoScope | null>(null);
   const [selectedReporte, setSelectedReporte] = useState<Reporte | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // ── Fetch reference data once ─────────────────────────────────────────
+  // ── Load reference data ───────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
       setRefLoading(true);
@@ -55,7 +75,7 @@ export function HRHistoricos({ type }: HRHistoricosProps) {
     load();
   }, []);
 
-  // ── Set default scope when type changes and reference data is ready ───
+  // ── Set default scope when type changes ───────────────────────────────────
   useEffect(() => {
     if (refLoading) return;
     setSelectedReporte(null);
@@ -72,17 +92,48 @@ export function HRHistoricos({ type }: HRHistoricosProps) {
     }
   }, [type, refLoading, areas, groups, workers]);
 
-  const { reportes, loading, error } = useHistoricoReportsHR(scope);
+  // ── Report list for this scope ─────────────────────────────────────────────
+  const {
+    reportes,
+    loading: listLoading,
+    error: listError,
+  } = useHistoricoReportsHR(scope);
 
-  // Auto-select first report when list changes
   useEffect(() => {
     setSelectedReporte(reportes.length > 0 ? reportes[0] : null);
   }, [reportes]);
 
-  // ── Dropdown open state ──────────────────────────────────────────────────
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  // ── Derive ChartScope from HistoricoScope ──────────────────────────────────
+  // This is the translation layer between "report filter scope" (which surveys
+  // to list) and "chart data scope" (which endpoint to hit for the graph).
+  const chartScope = useMemo<ChartScope | null>(() => {
+    if (!scope) return null;
+    switch (scope.type) {
+      case "area":
+        return { type: "area", areaId: scope.areaId };
+      case "grupo":
+        return { type: "group", groupId: scope.grupoId };
+      case "trabajador":
+        return { type: "worker", workerId: scope.trabajadorId };
+      default:
+        return null;
+    }
+  }, [scope]);
 
-  // ── Derived: label of the currently selected scope item ──────────────────
+  // ── Chart data ─────────────────────────────────────────────────────────────
+  // We use selectedReporte.id as the trigger key so the chart refreshes when
+  // the user picks a different report (even within the same scope).
+  // When no reporte is selected yet (null), chart shows "select a report".
+  const {
+    data: chartData,
+    loading: chartLoading,
+    error: chartError,
+  } = useBurnoutChart(
+    chartScope ?? { type: "self" }, // fallback; guarded by reporteId=null when chartScope is null
+    chartScope !== null ? (selectedReporte?.id ?? null) : null,
+  );
+
+  // ── Derived labels ────────────────────────────────────────────────────────
   const selectedLabel = (() => {
     if (!scope) return null;
     if (scope.type === "area")
@@ -96,7 +147,7 @@ export function HRHistoricos({ type }: HRHistoricosProps) {
     return null;
   })();
 
-  // ── Scope selector — one dropdown trigger matching "Dirigida a" style ────
+  // ── Scope selector (unchanged UI) ─────────────────────────────────────────
   const renderScopeSelector = () => {
     if (refLoading) return null;
 
@@ -135,37 +186,31 @@ export function HRHistoricos({ type }: HRHistoricosProps) {
       activeId = scope?.type === "trabajador" ? scope.trabajadorId : null;
     }
 
-    items = items.filter((item) => item.id !== activeId);
-
-    if (items.length === 0) return null;
+    const filteredItems = items.filter((item) => item.id !== activeId);
+    if (filteredItems.length === 0) return null;
 
     return (
       <div className="relative mb-6">
         <button
           onClick={() => setDropdownOpen((v) => !v)}
-          className={`w-full flex items-center justify-between px-4 py-3 border rounded-lg transition-colors ${"border-foreground/30 bg-background text-foreground hover:bg-secondary"}`}
+          className="w-full flex items-center justify-between px-4 py-3 border border-foreground/30 rounded-lg bg-background text-foreground hover:bg-secondary transition-colors"
         >
           <span>
-            {scope?.type ? type.charAt(0).toUpperCase() + type.slice(1) : ""}:{" "}
-            {selectedLabel ?? placeholder}
+            {scope?.type ? type.charAt(0).toUpperCase() + type.slice(1) : ""}
+            {selectedLabel ? `: ${selectedLabel}` : `: ${placeholder}`}
           </span>
           {dropdownOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
         </button>
 
         {dropdownOpen && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-foreground/30 rounded-lg shadow-lg z-10 overflow-hidden max-h-60 overflow-y-auto">
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => onSelect(item.id)}
-                className={`w-full text-left px-4 py-3 hover:bg-secondary transition-colors ${
-                  item.id === activeId ? "bg-[#E0D7F9]" : ""
-                }`}
+                className="w-full text-left px-4 py-3 hover:bg-secondary transition-colors"
               >
-                {scope?.type
-                  ? type.charAt(0).toUpperCase() + type.slice(1)
-                  : ""}
-                : {item.label}
+                {type.charAt(0).toUpperCase() + type.slice(1)}: {item.label}
               </button>
             ))}
           </div>
@@ -173,6 +218,8 @@ export function HRHistoricos({ type }: HRHistoricosProps) {
       </div>
     );
   };
+
+  const chartMode = chartScope ? scopeToMode(chartScope) : "self";
 
   return (
     <div className="p-8">
@@ -183,32 +230,37 @@ export function HRHistoricos({ type }: HRHistoricosProps) {
         VISUALIZACIÓN
       </h1>
 
-      {/* Power BI placeholder — shows selected report name */}
-      <div className="mb-4">
-        <BurnoutLineChart title={selectedReporte?.nombre} />
-      </div>
+      {/* Chart — aggregated data for the selected scope */}
+      <BurnoutLineChart
+        dataSource={chartData}
+        mode={chartMode}
+        title={selectedReporte?.nombre ?? selectedLabel ?? undefined}
+        loading={chartLoading}
+      />
 
-      {/* Scope selector */}
-      {renderScopeSelector()}
+      {chartError && (
+        <div className="mt-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-sans">
+          {chartError}
+        </div>
+      )}
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex items-center gap-3 mt-8 text-muted-foreground">
+      <div className="mt-6">{renderScopeSelector()}</div>
+
+      {listLoading && (
+        <div className="flex items-center gap-3 mt-4 text-muted-foreground">
           <Loader2 className="animate-spin w-4 h-4" />
           <span className="text-sm font-sans">Cargando reportes...</span>
         </div>
       )}
 
-      {/* Error */}
-      {error && (
-        <div className="mt-8 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-sans">
-          {error}
+      {listError && (
+        <div className="mt-4 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-sans">
+          {listError}
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && !error && reportes.length === 0 && scope && (
-        <p className="mt-8 text-sm text-muted-foreground font-sans">
+      {!listLoading && !listError && reportes.length === 0 && scope && (
+        <p className="mt-4 text-sm text-muted-foreground font-sans">
           No hay encuestas completadas por todos los miembros en este{" "}
           {type === "areas"
             ? "área"
@@ -219,12 +271,11 @@ export function HRHistoricos({ type }: HRHistoricosProps) {
         </p>
       )}
 
-      {/* Report list */}
-      {!loading && reportes.length > 0 && (
+      {!listLoading && reportes.length > 0 && (
         <ReporteList
           reportes={reportes}
           selectedReporte={selectedReporte ?? undefined}
-          onSelectReporte={(r) => setSelectedReporte(r)}
+          onSelectReporte={setSelectedReporte} // ← triggers chart title update
           title={`REPORTES · ${SUBTITLES[type].toUpperCase()}`}
         />
       )}
