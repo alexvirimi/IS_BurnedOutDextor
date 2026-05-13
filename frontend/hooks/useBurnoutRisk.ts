@@ -15,13 +15,11 @@ interface ProgressPoint {
 
 interface UseBurnoutRiskResult {
   label: string;
-  percentage?: number;
   isLoading: boolean;
 }
 
 export function useBurnoutRisk(): UseBurnoutRiskResult {
   const [label, setLabel] = useState<string>("--");
-  const [percentage, setPercentage] = useState<number>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -36,7 +34,6 @@ export function useBurnoutRisk(): UseBurnoutRiskResult {
         if (!latest || cancelled) return;
 
         setLabel(SCORE_TO_LABEL[latest.valor] ?? "--");
-        setPercentage(latest.confianza);
       } catch {
         if (!cancelled) {
           setLabel("--");
@@ -57,7 +54,6 @@ export function useBurnoutRisk(): UseBurnoutRiskResult {
 
   return {
     label,
-    percentage,
     isLoading,
   };
 }

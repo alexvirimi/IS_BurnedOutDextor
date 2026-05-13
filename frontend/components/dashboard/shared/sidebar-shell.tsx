@@ -7,19 +7,14 @@ import { authApi } from "@/lib/auth/api";
 import { useBurnoutRisk } from "@/hooks/useBurnoutRisk";
 
 export function BurnoutRiskCard() {
-  const { label, percentage, isLoading } = useBurnoutRisk();
+  const { label, isLoading } = useBurnoutRisk();
 
   return (
     <div className="bg-muted rounded-lg p-4">
-      <h3 className="font-heading font-bold text-foreground text-sm">
-        Riesgo de Burn Out
-      </h3>
+      <h3 className="text-primary text-sm font-sans">Riesgo de Burn Out</h3>
       <div className="flex justify-between items-center mt-1">
-        <span className="text-primary text-sm font-sans">
+        <span className="font-heading font-bold text-foreground text-sm">
           {isLoading ? "Cargando..." : label ? label : "Sin datos"}
-        </span>
-        <span className="text-foreground text-sm font-sans">
-          {percentage ? percentage * 100 : 0}%
         </span>
       </div>
     </div>
