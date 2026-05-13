@@ -9,6 +9,7 @@ from app.schemas.surveys_scheme import SurveyResponse
 from app.deps.auth_deps import require_rrhh
 from app.schemas.auth_scheme import CurrentUserData
 from uuid import UUID
+from app.exceptions import BusinessValidationError
 
 router = APIRouter(prefix="/question", tags=["Question"])
 
@@ -49,7 +50,7 @@ def create_question(
     service = QuestionService(db)
     try:
         return service.create_question(payload.model_dump())
-    except ValueError as e:
+    except (BusinessValidationError, ValueError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.put("/{question_id}", response_model=QuestionResponse, status_code=status.HTTP_200_OK)
@@ -67,7 +68,7 @@ def update_question(
         if not question:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pregunta no encontrada")
         return question
-    except ValueError as e:
+    except (BusinessValidationError, ValueError) as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)

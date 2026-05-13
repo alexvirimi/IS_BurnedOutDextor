@@ -22,6 +22,7 @@ from app.schemas.burnout_integration_scheme import (
     BurnoutPredictionResponse
 )
 from app.servicemodels.intervention_service import InterventionService
+from app.dbmodels import Result
 
 # Configuración AI Service
 # Permitir que la variable de entorno sea la URL completa o sólo la base.
@@ -73,12 +74,12 @@ class BurnoutService:
         Incluye: clase, confianza, razones y sugerencia de intervención.
         Permite múltiples resultados si tienen fechas diferentes.
         """
-        # Verificar si ya existe resultado para hoy con este worker y survey
+        # Verificar si ya existe resultado para este worker y survey
+        # (idempotency a nivel de aplicación: si existe, lo actualizamos)
         check_query = text("""
             SELECT id, generation_date FROM result
             WHERE id_worker = :worker_id 
-            AND id_survey = :survey_id 
-            AND generation_date = CURRENT_DATE
+            AND id_survey = :survey_id
         """)
         
         existing = db.execute(check_query, {
@@ -87,7 +88,7 @@ class BurnoutService:
         }).mappings().first()
         
         if existing:
-            # Actualizar resultado existente de hoy
+            # Actualizar resultado existente
             update_query = text("""
                 UPDATE result
                 SET burnout_confidence = :burnout_confidence,
@@ -96,7 +97,6 @@ class BurnoutService:
                     suggested_intervention = :suggested_intervention
                 WHERE id_worker = :worker_id 
                 AND id_survey = :survey_id 
-                AND generation_date = CURRENT_DATE
                 RETURNING id, generation_date
             """)
             
@@ -163,6 +163,33 @@ class BurnoutService:
         worker_id: UUID,
         survey_id: UUID
     ) -> BurnoutPredictionResponse:
+
+        # IDempotency: si ya existe un resultado para este worker+survey, retornar ese resultado
+        try:
+            existing = (
+                db.query(Result)
+                .filter(Result.id_worker == worker_id, Result.id_survey == survey_id)
+                .order_by(Result.generation_date.desc())
+                .first()
+            )
+
+            if existing:
+                # Reconstruir la respuesta mínima a partir del registro en BD
+                reasons = []
+                if existing.burnout_reasons:
+                    reasons = existing.burnout_reasons.split("\n")
+
+                return BurnoutPredictionResponse(
+                    worker_id=worker_id,
+                    burnout_class=existing.burnout_class,
+                    burnout_confidence=float(existing.burnout_confidence),
+                    probabilities={},
+                    reasons=reasons,
+                    suggestion=existing.suggested_intervention or "",
+                )
+        except Exception:
+            # En caso de error al leer el resultado existente, continuar con la predicción
+            pass
 
         # Obtener features
         features = BurnoutService.get_worker_features(

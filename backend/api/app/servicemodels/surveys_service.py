@@ -72,7 +72,9 @@ class SurveyService:
         elif 'status' in data:
             # If user explicitly sets status, validate it's a valid enum value
             if data['status'] not in [SurveyStatus.ABIERTA.value, SurveyStatus.CERRADA.value]:
-                raise ValueError(f"Invalid status. Must be 'activa' or 'cerrada'")
+                from app.exceptions import BusinessValidationError
+
+                raise BusinessValidationError(f"Invalid status. Must be 'activa' or 'cerrada'")
         
         for field, value in data.items():
             setattr(survey, field, value)

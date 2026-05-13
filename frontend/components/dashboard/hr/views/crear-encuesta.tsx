@@ -14,7 +14,6 @@
 
 import { useState, useEffect } from "react";
 import {
-  Filter,
   Search,
   ChevronDown,
   ChevronUp,
@@ -23,7 +22,7 @@ import {
   Loader2,
   Plus,
 } from "lucide-react";
-import { apiFetch, apiPost } from "@/lib/api/context";
+import { apiFetch, apiPost, apiPostJson } from "@/lib/api/context";
 import type {
   Area,
   Group,
@@ -32,6 +31,7 @@ import type {
   Question,
   SurveyWithQuestions,
   AssignmentTarget,
+  PsicometricVariable,
 } from "@/lib/api/interfaces";
 import { BUTTONS_COLORS } from "@/lib/styles/buttons-colors";
 import { QuestionSearchWithCreate } from "@/components/dashboard/shared/questionsearchwithcreate";
@@ -39,6 +39,7 @@ import { assignSurveyToTarget } from "@/lib/services/assignmentService";
 
 const C = BUTTONS_COLORS.hr;
 const M = BUTTONS_COLORS.hrModal;
+const REQUIRED_QUESTIONS_PER_VARIABLE = 1;
 
 // ─── Tipo de estado de envío ──────────────────────────────────────────────────
 // Permite mostrar feedback granular ("Creando encuesta…" vs "Asignando…")
@@ -52,21 +53,84 @@ const PHASE_LABEL: Record<SubmitPhase, string> = {
   done: "Crear Encuesta",
 };
 
+function normalizeText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function getQuestionVariableName(
+  variable: Question["psicometric_variable"],
+): string {
+  if (!variable) return "";
+  return typeof variable === "string" ? variable : variable.name;
+}
+
+function getQuestionVariableId(
+  variable: Question["psicometric_variable"],
+  psicometricVariables: PsicometricVariable[],
+): string | null {
+  if (!variable) return null;
+
+  if (typeof variable !== "string") {
+    return variable.id;
+  }
+
+  const variableName = normalizeText(getQuestionVariableName(variable));
+  const byName = psicometricVariables.find(
+    (item) => normalizeText(item.name) === variableName,
+  );
+
+  return byName?.id ?? null;
+}
+
+function getQuestionVariableCounts(
+  questionsById: Map<string, Question>,
+  selectedQuestionIds: Set<string>,
+  psicometricVariables: PsicometricVariable[],
+) {
+  const counts = new Map<string, number>(
+    psicometricVariables.map((variable) => [variable.id, 0]),
+  );
+
+  selectedQuestionIds.forEach((questionId) => {
+    const question = questionsById.get(questionId);
+    if (!question) return;
+
+    const requiredVariableId = getQuestionVariableId(
+      question.psicometric_variable,
+      psicometricVariables,
+    );
+
+    if (requiredVariableId) {
+      counts.set(requiredVariableId, (counts.get(requiredVariableId) ?? 0) + 1);
+    }
+  });
+
+  return counts;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function HRCrearEncuesta() {
+  const today = new Date().toISOString().split("T")[0];
+
   // ── Remote data ───────────────────────────────────────────────────────────
   const [areas, setAreas] = useState<Area[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [psicometricVariables, setPsicometricVariables] = useState<
+    PsicometricVariable[]
+  >([]);
   const [loadingData, setLoadingData] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   // ── Survey fields ─────────────────────────────────────────────────────────
   const [surveyName, setSurveyName] = useState("");
-  const [apertureDate, setApertureDate] = useState("");
+  const [apertureDate, setApertureDate] = useState(today);
   const [finishingDate, setFinishingDate] = useState("");
 
   // ── Survey fields errors ─────────────────────────────────────────────────────────
@@ -105,26 +169,33 @@ export function HRCrearEncuesta() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   // ── Fetch al montar ───────────────────────────────────────────────────────
-
   useEffect(() => {
     async function loadAll() {
       setLoadingData(true);
       setFetchError(null);
       try {
-        const [areasData, groupsData, workersData, surveysData, questionsData] =
-          await Promise.all([
-            apiFetch<Area[]>("/areas/"),
-            apiFetch<Group[]>("/group/"),
-            apiFetch<Worker[]>("/worker/"),
-            apiFetch<Survey[]>("/survey/"),
-            apiFetch<Question[]>("/question/"),
-          ]);
+        const [
+          areasData,
+          groupsData,
+          workersData,
+          surveysData,
+          questionsData,
+          psicometricVariablesData,
+        ] = await Promise.all([
+          apiFetch<Area[]>("/areas/"),
+          apiFetch<Group[]>("/group/"),
+          apiFetch<Worker[]>("/worker/"),
+          apiFetch<Survey[]>("/survey/"),
+          apiFetch<Question[]>("/question/"),
+          apiFetch<PsicometricVariable[]>("/psicometric_variable/"),
+        ]);
         setAreas(areasData);
         setGroups(groupsData);
         setWorkers(workersData);
         setSurveys(surveysData);
         setQuestions(questionsData);
-        setApertureDate(new Date().toISOString().split("T")[0]);
+        setPsicometricVariables(psicometricVariablesData);
+        setApertureDate(today);
       } catch (err) {
         setFetchError(
           err instanceof Error ? err.message : "Error cargando datos",
@@ -172,6 +243,26 @@ export function HRCrearEncuesta() {
   const modalAvailableQuestions = isFromScratch
     ? questions
     : questions.filter((q) => !linkedQuestionIds.has(q.id));
+
+  const questionsById = new Map(
+    questions.map((question) => [question.id, question]),
+  );
+
+  const selectedQuestionCounts = getQuestionVariableCounts(
+    questionsById,
+    selectedQuestionIds,
+    psicometricVariables,
+  );
+  const missingQuestionRequirements = psicometricVariables.filter(
+    (variable) =>
+      (selectedQuestionCounts.get(variable.id) ?? 0) <
+      REQUIRED_QUESTIONS_PER_VARIABLE,
+  );
+  const requiredVariablesLabel = psicometricVariables
+    .map((variable) => variable.name)
+    .join(", ");
+  const hasRequiredQuestionDistribution =
+    psicometricVariables.length > 0 && missingQuestionRequirements.length === 0;
 
   // ── Helpers de scope ──────────────────────────────────────────────────────
 
@@ -222,9 +313,7 @@ export function HRCrearEncuesta() {
     setConfirmedSurvey(null);
     setSelectedQuestionIds(new Set());
     setLinkedQuestionIds(new Set());
-    setSurveyName("");
-    setApertureDate("");
-    setFinishingDate("");
+    setApertureDate(apertureDate);
     setShowSurveyModal(true);
     setLoadingLinked(false);
   };
@@ -293,6 +382,13 @@ export function HRCrearEncuesta() {
     )
       return;
 
+    if (isFromScratch && !hasRequiredQuestionDistribution) {
+      setSubmitError(
+        `Debes seleccionar ${REQUIRED_QUESTIONS_PER_VARIABLE} preguntas por cada variable psicométrica: ${requiredVariablesLabel}.`,
+      );
+      return;
+    }
+
     if (!isFromScratch) {
       if (!confirmedSurvey) return;
     }
@@ -305,7 +401,6 @@ export function HRCrearEncuesta() {
       let surveyId: string;
 
       // 1a. Crear encuesta nueva
-      const today = new Date().toISOString().split("T")[0];
       const newSurvey = await apiPost<Survey>("/survey/", {
         name: surveyName.trim(),
         aperture_date: apertureDate || today,
@@ -315,10 +410,10 @@ export function HRCrearEncuesta() {
       surveyId = newSurvey.id;
 
       // 1b. Vincular preguntas seleccionadas
-      for (const questionId of selectedQuestionIds) {
-        await apiPost("/question_survey/", {
+      if (selectedQuestionIds.size > 0) {
+        await apiPostJson("/question_survey/assign", {
           id_survey: surveyId,
-          id_question: questionId,
+          question_ids: Array.from(selectedQuestionIds),
         });
       }
 
@@ -341,7 +436,7 @@ export function HRCrearEncuesta() {
       setSelectedQuestionIds(new Set());
       setLinkedQuestionIds(new Set());
       setSurveyName("");
-      setApertureDate("");
+      setApertureDate(today);
       setFinishingDate("");
       setAssignmentTarget({ type: "empresa" });
     } catch (err) {
@@ -356,7 +451,9 @@ export function HRCrearEncuesta() {
   // ── Derived booleans ──────────────────────────────────────────────────────
 
   const surveyChosen = isFromScratch
-    ? surveyName.trim().length > 0 && selectedQuestionIds.size > 0
+    ? surveyName.trim().length > 0 &&
+      selectedQuestionIds.size > 0 &&
+      hasRequiredQuestionDistribution
     : confirmedSurvey !== null && selectedQuestionIds.size > 0;
 
   // El scope siempre está definido (tiene default "empresa"), así que
@@ -441,8 +538,8 @@ export function HRCrearEncuesta() {
             </span>
             <input
               type="date"
-              min={new Date().toISOString().split("T")[0]}
-              value={apertureDate || new Date().toISOString().split("T")[0]}
+              min={today}
+              value={apertureDate || today}
               onChange={(e) => setApertureDate(e.target.value)}
               className="px-4 py-2.5 border border-foreground/30 rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm font-sans"
             />
@@ -838,19 +935,44 @@ export function HRCrearEncuesta() {
 
             {/* Footer */}
             <div className="flex items-center justify-between pt-2 border-t border-border">
-              <span className="text-sm text-muted-foreground font-sans">
-                {selectedQuestionIds.size} pregunta
-                {selectedQuestionIds.size !== 1 ? "s" : ""} seleccionada
-                {selectedQuestionIds.size !== 1 ? "s" : ""}
-              </span>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm text-muted-foreground font-sans">
+                  {selectedQuestionIds.size} pregunta
+                  {selectedQuestionIds.size !== 1 ? "s" : ""} seleccionada
+                  {selectedQuestionIds.size !== 1 ? "s" : ""}
+                </span>
+                {isFromScratch && !hasRequiredQuestionDistribution && (
+                  <span className="text-xs text-muted-foreground font-sans">
+                    Variables completas: 1 pregunta por cada variable (
+                    {missingQuestionRequirements
+                      .map((variable) => variable.name)
+                      .join(", ")}
+                    ).
+                  </span>
+                )}
+                {isFromScratch && hasRequiredQuestionDistribution && (
+                  <span className="text-xs text-green-700 font-sans">
+                    Variables completas: {REQUIRED_QUESTIONS_PER_VARIABLE}{" "}
+                    preguntas por cada variable ({requiredVariablesLabel}).
+                  </span>
+                )}
+              </div>
 
               <button
                 onClick={handleConfirmSurvey}
-                disabled={selectedQuestionIds.size === 0}
+                disabled={
+                  isFromScratch
+                    ? !hasRequiredQuestionDistribution
+                    : selectedQuestionIds.size === 0
+                }
                 className={`px-6 py-2 rounded-lg font-medium text-white text-sm transition-colors ${
-                  selectedQuestionIds.size > 0
-                    ? "bg-accent text-foreground hover:bg-accent/80"
-                    : "bg-secondary text-muted-foreground cursor-not-allowed"
+                  isFromScratch
+                    ? hasRequiredQuestionDistribution
+                      ? "bg-accent text-foreground hover:bg-accent/80"
+                      : "bg-secondary text-muted-foreground cursor-not-allowed"
+                    : selectedQuestionIds.size > 0
+                      ? "bg-accent text-foreground hover:bg-accent/80"
+                      : "bg-secondary text-muted-foreground cursor-not-allowed"
                 }`}
               >
                 {isFromScratch ? "Confirmar preguntas" : "Elegir Encuesta"}

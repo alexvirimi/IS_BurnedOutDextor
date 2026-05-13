@@ -51,7 +51,6 @@ def respond_to_question(
 ):
     """
     Endpoint público para que usuarios respondan preguntas de encuestas.
-    
     Solo requiere:
     - id_question_survey: UUID de la pregunta en la encuesta
     - value: Valor de la respuesta (1-5)
@@ -115,4 +114,3 @@ def create_bulk_answers(
         survey_id=payload.id_survey,
         answers_data=answers_data
     )
-

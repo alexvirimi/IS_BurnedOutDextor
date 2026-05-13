@@ -12,7 +12,9 @@ class QuestionService:
     def _validate_psicometric_variable(self, psicometric_variable_id: UUID):
         psicometric_variable = self.db.query(PsicometricVariable).filter(PsicometricVariable.id == psicometric_variable_id).first()
         if not psicometric_variable:
-            raise ValueError(f"PsicometricVariable con ID {psicometric_variable_id} no encontrada.")
+            from app.exceptions import BusinessValidationError
+
+            raise BusinessValidationError(f"PsicometricVariable con ID {psicometric_variable_id} no encontrada.")
         return psicometric_variable
 
     def get_questions(self):

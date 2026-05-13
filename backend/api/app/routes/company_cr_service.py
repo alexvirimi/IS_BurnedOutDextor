@@ -7,6 +7,7 @@ from app.schemas.company_scheme import CompanyResponse, CompanyCreate
 from app.deps.auth_deps import require_rrhh
 from app.schemas.auth_scheme import CurrentUserData
 from pydantic import ValidationError
+from app.exceptions import BusinessValidationError
 from uuid import UUID
 
 router = APIRouter(prefix="/company", tags=["Company"])
@@ -46,7 +47,7 @@ def create_worker_info(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
-    except ValueError as e:
+    except (BusinessValidationError, ValueError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)

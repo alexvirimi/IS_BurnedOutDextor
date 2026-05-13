@@ -10,6 +10,7 @@ from app.schemas.workers_scheme import WorkerResponse, WorkerCreate, WorkerDetai
 from app.deps.auth_deps import get_current_user, require_rrhh
 from app.schemas.auth_scheme import CurrentUserData
 from pydantic import BaseModel, ValidationError
+from app.exceptions import BusinessValidationError
 from uuid import UUID
 
 router = APIRouter(prefix="/worker", tags=["Worker"])
@@ -79,7 +80,7 @@ def create_worker(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
-    except ValueError as e:
+    except (BusinessValidationError, ValueError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
