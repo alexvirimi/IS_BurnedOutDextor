@@ -9,6 +9,7 @@ from app.schemas.question_surveys_scheme import AssignQuestions, QuestionSurveyR
 from app.deps.auth_deps import require_rrhh
 from app.schemas.auth_scheme import CurrentUserData
 from uuid import UUID
+from app.exceptions import BusinessValidationError
 
 router = APIRouter(prefix="/question_survey", tags=["QuestionSurvey"])
 
@@ -55,4 +56,7 @@ def delete_question_survey(
 @router.post("/assign", status_code=status.HTTP_200_OK)
 def assign_questions_to_survey(payload: AssignQuestions= Depends(AssignQuestions.as_form), db: Session = Depends(get_db)):
     service = QuestionSurveyService(db)
-    return service.assign_questions(payload)
+    try:
+        return service.assign_questions(payload)
+    except BusinessValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

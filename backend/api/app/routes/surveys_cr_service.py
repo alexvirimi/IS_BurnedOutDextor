@@ -18,6 +18,7 @@ from app.dbmodels import Surveys, QuestionSurveys
 from app.deps.auth_deps import require_rrhh
 from app.schemas.auth_scheme import CurrentUserData
 from pydantic import ValidationError
+from app.exceptions import BusinessValidationError
 from datetime import date as date_type
 
 router = APIRouter(prefix="/survey", tags=["Survey"])
@@ -107,7 +108,7 @@ def create_survey(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
-    except ValueError as e:
+    except (BusinessValidationError, ValueError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
@@ -142,7 +143,7 @@ def update_survey(
                 detail="Encuesta no encontrada",
             )
         return updated
-    except ValueError as e:
+    except (BusinessValidationError, ValueError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
